@@ -80,6 +80,5 @@ def main():
                 with open(f'{path}/{lap}{file_extension}', 'wb') as f:
                     f.write(r.content)
 
-
 if __name__ == '__main__':
     main()
