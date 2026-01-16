@@ -4,33 +4,68 @@ import logging
 from urllib.parse import quote
 import os
 
+# Define base components used later in the program to build url and file names
 base_url = 'https://raw.githubusercontent.com/TracingInsights-Archive/2025/main/'
 end_url = '/Race'
-
 file_extension = '_tel.json'
+allowed_years = [2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
 
+# Disables logging messages from FastF1 API
 logging.disable(logging.INFO)
 
 def main():
-    session = fastf1.get_session(2025, 1, 'R')
+    # Variable declaration
+    event_dict = {}
+    driver_dict = {}
+    laps_dict = {}
+    year = 0
+    index = 1
+
+    # Obtaining user input for year
+    print("\nTracing Inisghts Telemetry Data Fetcher\n")
+    print(f'Current allowed years: {allowed_years}')
+    year = int(input("Please select a year from the above range to fetch data from\n\n"))
+    while (year not in allowed_years):
+        year = int(input("\nError. Year not in range of valid data. Please try again.\n\n"))
+    
+    # Obtain the schedule from the specified year
+    print()
+    schedule = fastf1.get_event_schedule(year)['EventName']
+    print()
+
+    # Print all events from schedule
+    for event in schedule:
+        if('Grand Prix' in event):
+            print(f'{index}) {event}')
+            event_dict[index] = event
+            index += 1
+    
+    # Obtaining user input for race
+    race = int(input("\nPlease select a race from the above range to fetch data from\n\n"))
+    while (race not in event_dict.keys()):
+        race = int(input("\nError. Race not in range of valid data. Please try again.\n\n"))
+
+    # Get specified session and load it
+    session = fastf1.get_session(year, event_dict[race], 'R')
     session.load()
     event_name = session.event['EventName']
 
-    driver_dict = {}
-    laps_dict = {}
-
+    # Iterate through all drivers and store their abbreviations
     for driver in session.drivers:
         driver_dict[driver] = session.get_driver(driver)['Abbreviation']
 
+    # Craft the URL for fetching the files from Git
     url_event_name = quote(event_name, safe='')
     url = base_url + url_event_name + end_url
 
+    # Obtain the lap count from each driver and store it in a dict
     for driver in driver_dict.keys():
         laps_dict[driver] = int(session.results['Laps'][driver] + 0.9999)
 
     for driver in driver_dict.keys():
         abbr = driver_dict[driver]
 
+        # For each driver, obtain every lap of telemetry data, download, and save it
         for lap in range(1, laps_dict[driver] + 1):
             addition_url = f'/{abbr}/{lap}{file_extension}'
             download_url = url + addition_url
