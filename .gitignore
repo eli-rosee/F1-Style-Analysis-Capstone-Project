@@ -1,3 +1,6 @@
+# Downloaded Data Ignored
+data_ingestion/telemetry
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
