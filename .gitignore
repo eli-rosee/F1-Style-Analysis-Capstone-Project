@@ -1,5 +1,5 @@
 # Downloaded Data Ignored
-data_ingestion/data
+data_ingestion/telemetry
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
