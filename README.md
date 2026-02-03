@@ -6,3 +6,4 @@ pip install -r requirements.txt
 ## Current functionalities
 - data ingestion
 test
+test_caden
