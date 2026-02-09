@@ -4,6 +4,8 @@ import json
 import pandas as pd
 import os   
 import postgresql_db
+from sqlalchemy import create_engine
+from postgresql_db import telemetry_database
 
 schema_mapping = {"x":"track_coordinate_x", "y":"track_coordinate_y", "z":"track_coordinate_z"}
 
@@ -21,12 +23,18 @@ def process_tel_file(filepath):
     return train
 
 def main():
-    db = postgresql_db.telemetry_database()
+    conn_string = f'postgres://{telemetry_database.host}:{telemetry_database.password}@{telemetry_database.host}/telemetry_data'
+    db = create_engine(conn_string)
+    conn = db.connect()
+
     file = 'telemetry/Australian_Grand_Prix/ALB/1_tel.json'
 
     tel_df = process_tel_file(file)
 
-    # tel_df.to_sql('telemetry_data', con=db.conn, if_exists="append", index=False)
+    try:
+        tel_df.to_sql('telemetry_data', con=conn, if_exists="append", index=False)
+    except (Exception, Error) as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     main()

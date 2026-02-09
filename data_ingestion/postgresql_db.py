@@ -2,13 +2,19 @@ import psycopg2
 from psycopg2 import Error
 
 class telemetry_database():
+
+    host="localhost"
+    database="postgres"
+    user="postgres"
+    password="Team6"
+
     def __init__(self):
         try:
             self.conn = psycopg2.connect(
-                host="localhost",
-                database="postgres",
-                user="postgres",
-                password="Team6"
+                host = telemetry_database.host,
+                database = telemetry_database.database,
+                user = telemetry_database.user,
+                password = telemetry_database.password
             )
 
             self.cursor = self.conn.cursor()
@@ -83,7 +89,7 @@ class telemetry_database():
             self.cursor.execute("""
                                 
             CREATE TABLE race_lap_data (
-                index       INT PRIMARY KEY,
+                lap_data_id INT PRIMARY KEY,
                 driver_id   CHAR(3) NOT NULL,
                 lap         INT NOT NULL,
                 race_name   CHAR(3) NOT NULL,
