@@ -41,7 +41,7 @@ class telemetry_database():
         """)
 
         if self.cursor.fetchone()[0]:
-            self.cursor.execute('DROP TABLE telemetry_data;')
+            self.cursor.execute('DROP TABLE telemetry_data CASCADE;')
 
         self.cursor.execute("""
                             
@@ -66,16 +66,67 @@ class telemetry_database():
 
         """)
 
-        print(self.cursor.execute("""
-        
-        SELECT * from telemetry_data;
+    def create_race_lap_data(self):
+            
+            self.cursor.execute("""
 
-        """))
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE    table_name   = 'race_lap_data'
+            );
+
+            """)
+
+            if self.cursor.fetchone()[0]:
+                self.cursor.execute('DROP TABLE race_lap_data CASCADE;')
+
+            self.cursor.execute("""
+                                
+            CREATE TABLE race_lap_data (
+                index       INT PRIMARY KEY,
+                driver_id   CHAR(3) NOT NULL,
+                lap         INT NOT NULL,
+                race_name   CHAR(3) NOT NULL,
+                year        INT NOT NULL,
+                tel_index   INT NOT NULL,
+                                
+                CONSTRAINT fk_telemetry
+                    FOREIGN KEY (tel_index)
+                    REFERENCES telemetry_data (tel_index)
+            );
+
+            """)
+
+    def cluster_results_kmeans(self):
+            
+            self.cursor.execute("""
+
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE    table_name   = 'cluster_results_kmeans'
+            );
+
+            """)
+
+            if self.cursor.fetchone()[0]:
+                self.cursor.execute('DROP TABLE cluster_results_kmeans;')
+
+            self.cursor.execute("""
+                                
+            CREATE TABLE cluster_results_kmeans (
+                index       INT PRIMARY KEY,
+                driver_id   CHAR(3) NOT NULL,
+                year        INT NOT NULL,
+                style_1     FLOAT CHECK (style_1 BETWEEN 0 AND 100)
+            );
+
+            """)
 
 def main():
     db = telemetry_database()
-
+    db.cluster_results_kmeans()
     db.create_telemetry_data_table()
+    db.create_race_lap_data()
 
 if __name__ == "__main__":
     main()
