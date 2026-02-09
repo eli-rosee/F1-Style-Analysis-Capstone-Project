@@ -5,10 +5,12 @@ import pandas as pd
 import os   
 
 class telemetry_database():
-    host="localhost",
-    database="postgres",
-    user="postgres",
+    host="localhost"
+    database="postgres"
+    user="postgres"
     password="Team6"
+
+    schema_mapping = {"x":"track_coordinate_x", "y":"track_coordinate_y", "z":"track_coordinate_z"}
 
     def __init__(self):
         try:
@@ -20,6 +22,7 @@ class telemetry_database():
             )
 
             self.cursor = self.conn.cursor()
+            self.conn.autocommit = True
 
             print("Connected to the database successfully!")
 
@@ -41,6 +44,10 @@ class telemetry_database():
             dict_train = json.load(train_file)['tel']
 
         train = pd.DataFrame(data=dict_train, index=None, columns=None, dtype=None, copy=None)
+        train.rename(columns=telemetry_database.schema_mapping, inplace=True)
+        print(train.columns)
+        train.drop(['dataKey'], axis=1, inplace=True)
+
         print(train.head(10))
 
         return train
@@ -49,7 +56,9 @@ def main():
     db = telemetry_database()
     file = 'telemetry/Australian_Grand_Prix/ALB/1_tel.json'
 
-    db.process_tel_file(file)
+    tel_df = db.process_tel_file(file)
+
+    # tel_df.to_sql('telemetry_data', con=db.conn, if_exists="append", index=False)
 
 if __name__ == "__main__":
     main()
