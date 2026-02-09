@@ -69,7 +69,9 @@ def main():
     for driver in driver_dict.keys():
         laps_dict[driver] = int(session.results['Laps'][driver] + 0.9999)
 
-    for driver in driver_dict.keys():
+    for driver_num, driver in enumerate(driver_dict.keys()):
+
+        print(f'\nProcessing data for driver {driver_num + 1} / {len(driver_dict.keys())}:\n')
         abbr = driver_dict[driver]
 
         # For each driver, obtain every lap of telemetry data, download, and save it

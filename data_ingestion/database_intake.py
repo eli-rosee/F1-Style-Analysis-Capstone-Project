@@ -1,5 +1,7 @@
 import psycopg2
 from psycopg2 import Error
+import json
+import pandas as pd    
 
 def connect_to_db():
     # Connect to your postgres DB
@@ -16,13 +18,16 @@ def main():
         conn = connect_to_db()
         print("Connected to the database successfully!")
         cursor = conn.cursor()
-        print("PostgreSQL server information")
-        print(conn.get_dsn_parameters(), "\n")
-        # Executing a SQL query
-        cursor.execute("SELECT version();")
-        # Fetch result
-        record = cursor.fetchone()
-        print("You are connected to - ", record, "\n")
+        
+        # reading the JSON data using json.load()
+        file = 'telemetry/Australian_Grand_Prix/ALB/1_tel.json'
+        with open(file) as train_file:
+            dict_train = json.load(train_file)['tel']
+
+        # converting json dataset from dictionary to dataframe
+        train = pd.DataFrame(data=dict_train, index=None, columns=None, dtype=None, copy=None)
+
+        print(train.head(10))
 
     except (Exception, Error) as e:
         print(f"Error connecting to the database: {e}")
