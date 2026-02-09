@@ -4,6 +4,13 @@ import logging
 from urllib.parse import quote
 import os
 
+'''
+Code designed to intake telemetry data from the Tracing Insights GitHub repository. 
+- The program prompts the user to select a year and a race from that year, then iterates through all drivers and laps for that race, downloading the telemetry data for each lap and saving it.
+- The program uses the FastF1 API to obtain the schedule and session information, and the requests library to fetch the telemetry data from the GitHub repository. 
+- The telemetry data is saved in a directory structure organized by event name and driver abbreviation.
+'''
+
 # Define base components used later in the program to build url and file names
 base_url = 'https://raw.githubusercontent.com/TracingInsights-Archive/2025/main/'
 end_url = '/Race'
