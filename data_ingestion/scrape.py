@@ -74,7 +74,7 @@ def main():
             r = requests.get(download_url)
 
             if r.status_code == 200:
-                path = f'telemetry/{event_name}/Race/{abbr}'
+                path = f'telemetry/{event_name.replace(" ", "_")}/{abbr}'
                 os.makedirs(path, exist_ok=True)
 
                 with open(f'{path}/{lap}{file_extension}', 'wb') as f:
