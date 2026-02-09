@@ -1,41 +1,55 @@
 import psycopg2
 from psycopg2 import Error
 import json
-import pandas as pd    
+import pandas as pd
+import os   
 
-def connect_to_db():
-    # Connect to your postgres DB
-    conn = psycopg2.connect(
-        host="localhost",
-        database="postgres",
-        user="postgres",
-        password="Team6"
-    )
-    return conn
+class telemetry_database():
+    host="localhost",
+    database="postgres",
+    user="postgres",
+    password="Team6"
 
-def main():
-    try:
-        conn = connect_to_db()
-        print("Connected to the database successfully!")
-        cursor = conn.cursor()
-        
-        # reading the JSON data using json.load()
-        file = 'telemetry/Australian_Grand_Prix/ALB/1_tel.json'
-        with open(file) as train_file:
+    def __init__(self):
+        try:
+            self.conn = psycopg2.connect(
+                host="localhost",
+                database="postgres",
+                user="postgres",
+                password="Team6"
+            )
+
+            self.cursor = self.conn.cursor()
+
+            print("Connected to the database successfully!")
+
+        except (Exception, Error) as e:
+            print(f"Error connecting to the database: {e}")
+
+    def __del__(self):
+        try:
+            self.conn.close()
+            self.cursor.close()
+
+            print("Successfully closed connection to the database.")
+
+        except (Exception, Error) as e:
+            print(f"Error closing the database: {e}")
+
+    def process_tel_file(self, filepath):
+        with open(filepath) as train_file:
             dict_train = json.load(train_file)['tel']
 
-        # converting json dataset from dictionary to dataframe
         train = pd.DataFrame(data=dict_train, index=None, columns=None, dtype=None, copy=None)
-
         print(train.head(10))
 
-    except (Exception, Error) as e:
-        print(f"Error connecting to the database: {e}")
-    finally:
-        if(conn):
-            conn.close()
-            cursor.close()
-            print("PostgreSQL connection is closed")
+        return train
+
+def main():
+    db = telemetry_database()
+    file = 'telemetry/Australian_Grand_Prix/ALB/1_tel.json'
+
+    db.process_tel_file(file)
 
 if __name__ == "__main__":
     main()
