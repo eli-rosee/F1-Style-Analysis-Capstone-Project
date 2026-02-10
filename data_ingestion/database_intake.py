@@ -25,8 +25,11 @@ def process_tel_file(filepath):
 def convert_race_to_dataframe_list(race_name):
 
     base_path = os.path.join('telemetry', race_name)
+
+    #declare empty list to store pandas dataframes
     dataframe_list = []
 
+    #get list of all drivers in the race directory
     drivers = [d for d in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, d))]
 
     for driver in drivers:
@@ -42,6 +45,7 @@ def convert_race_to_dataframe_list(race_name):
     if dataframe_list:
         #return a list of pandas dataframes
         return dataframe_list 
+        
         #if you would rather have this be one massive dataframe, change this return to: 
         #pd.concat(all_race_data, ignore_index=True)
     
@@ -53,12 +57,10 @@ def main():
     #conn_string = f'postgresql://{telemetry_database.host}:{telemetry_database.password}@{telemetry_database.host}/telemetry_data'
     #db = create_engine(conn_string)
     #conn = db.connect()
-    
-    #convert .json to pandas dataframe list
+
+    #convert a race to pandas dataframes
     dataframe_list = convert_race_to_dataframe_list("Australian_Grand_Prix")
 
-    #print("Saving pandas dataframes to race_data.csv")
-    #df.to_csv("race_data.csv")
 
     '''
     #attempt to add dataframe to the database
@@ -67,7 +69,6 @@ def main():
     except (Exception, Error) as e:
         print(f"Error: {e}")
     '''
-
 
 if __name__ == "__main__":
     main()
