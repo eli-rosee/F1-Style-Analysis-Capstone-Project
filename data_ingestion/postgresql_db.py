@@ -60,7 +60,7 @@ class telemetry_database():
         track_coordinate_y  FLOAT,
         track_coordinate_z  FLOAT,
         rpm                 FLOAT,
-        gear                INT CHECK (gear BETWEEN 1 AND 8),
+        gear                INT CHECK (gear BETWEEN 0 AND 8),
         throttle            FLOAT CHECK (throttle BETWEEN 0 AND 100),
         brake               BOOLEAN,
         drs                 drs_status,

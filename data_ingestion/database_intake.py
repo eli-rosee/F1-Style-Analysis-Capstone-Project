@@ -53,22 +53,61 @@ def convert_race_to_dataframe_list(race_name):
     return []
 
 def main():
-    #connect to database
-    #conn_string = f'postgresql://{telemetry_database.host}:{telemetry_database.password}@{telemetry_database.host}/telemetry_data'
-    #db = create_engine(conn_string)
-    #conn = db.connect()
+    # DB connection SQLAlchemy engine
+    user = telemetry_database.user
+    password = telemetry_database.password
+    host = telemetry_database.host
+    dbname = telemetry_database.database
+    port = 5432
 
-    #convert a race to pandas dataframes
+    engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}")
+
     dataframe_list = convert_race_to_dataframe_list("Australian_Grand_Prix")
 
+    VALID_COLUMNS = [
+        "time", "distance", "rel_distance",
+        "track_coordinate_x", "track_coordinate_y", "track_coordinate_z",
+        "rpm", "gear", "throttle", "brake",
+        "speed", "acc_x", "acc_y", "acc_z"
+    ]
 
-    '''
-    #attempt to add dataframe to the database
-    try:
-        tel_df.to_sql('telemetry_data', con=conn, if_exists="append", index=False)
-    except (Exception, Error) as e:
-        print(f"Error: {e}")
-    '''
+    inserted = 0
+    for i, df in enumerate(dataframe_list, start=1):
+        # keep only expected columns (made real copy to stop SettingWithCopyWarning)
+        df = df[[c for c in df.columns if c in VALID_COLUMNS]].copy()
+
+        # ensure boolean for brake
+        if "brake" in df.columns:
+            df["brake"] = df["brake"].astype(bool)
+
+        # normalize gear; numeric, replace invalid with NULL, enforce 0-8
+        if "gear" in df.columns:
+            df["gear"] = pd.to_numeric(df["gear"], errors="coerce")
+            df.loc[~df["gear"].between(0, 8), "gear"] = pd.NA
+
+        # validate throttle percentages; coerce invalids to null
+        if "throttle" in df.columns:
+            df["throttle"] = pd.to_numeric(df["throttle"], errors="coerce")
+            df.loc[~df["throttle"].between(0, 100), "throttle"] = pd.NA
+
+        try:
+            df.to_sql(
+                "telemetry_data",
+                con=engine,
+                if_exists="append",
+                index=False,
+                method="multi"
+            )
+            inserted += len(df)
+            print(f"[{i}/{len(dataframe_list)}] Inserted {len(df)} rows (total={inserted})")
+        except Exception as e:
+            # stop the giant SQL spam
+            msg = str(e).split("\n")[0]
+            print(f"INSERT FAILED on chunk {i}: {msg}")
+            break
+
+    print(f"Done. Inserted {inserted} telemetry rows.")
+
 
 if __name__ == "__main__":
     main()
