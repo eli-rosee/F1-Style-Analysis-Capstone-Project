@@ -23,7 +23,7 @@ logging.disable(logging.INFO)
 def main():
     # Variable declaration
     event_dict = {}
-    driver_dict = {}
+    driver_key_dict = {}
     laps_dict = {}
     year = 0
     index = 1
@@ -59,20 +59,24 @@ def main():
 
     # Iterate through all drivers and store their abbreviations
     for driver in session.drivers:
-        driver_dict[driver] = session.get_driver(driver)['Abbreviation']
+        abbr = session.get_driver(driver)['Abbreviation']
+        driver_key_dict[abbr] = driver
 
     # Craft the URL for fetching the files from Git
     url_event_name = quote(event_name, safe='')
     url = base_url + url_event_name + end_url
 
     # Obtain the lap count from each driver and store it in a dict
-    for driver in driver_dict.keys():
-        laps_dict[driver] = int(session.results['Laps'][driver] + 0.9999)
+    for abbr in driver_key_dict.keys():
+        driver_key = driver_key_dict[abbr]
+        driver_laps = int(session.results['Laps'][driver_key] + 0.9999)
+        
+        laps_dict[abbr] = driver_laps
 
-    for driver_num, driver in enumerate(driver_dict.keys()):
+    for driver_num, driver in enumerate(driver_key_dict.keys()):
 
-        print(f'\nProcessing data for driver {driver_num + 1} / {len(driver_dict.keys())}:\n')
-        abbr = driver_dict[driver]
+        print(f'\nProcessing data for driver {driver_num + 1} / {len(driver_key_dict.keys())}:\n')
+        abbr = driver_key_dict[driver]
 
         # For each driver, obtain every lap of telemetry data, download, and save it
         for lap in range(1, laps_dict[driver] + 1):
