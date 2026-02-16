@@ -128,15 +128,32 @@ class telemetry_database():
 
             """)
 
+    def query_driver_telemetry(self, race, driver):
+        self.cursor.execute("SELECT * FROM race_lap_data;")
+
+        # 4. Fetch all the results
+        records = self.cursor.fetchall()
+
+        # 5. Print the records
+        print("Selected rows:")
+        for row in records:
+            print(row) # Each row is a tuple
+
 def main():
-    cluster_methods = ['kmeans', 'dbscan', 'fuzzyc', 'gaussian', 'hierarchical']
     db = telemetry_database()
 
-    for method in cluster_methods:
-        db.clustering_results(method)
+    ## METHODS FOR INITIAL TABLE CREATION
+    # cluster_methods = ['kmeans', 'dbscan', 'fuzzyc', 'gaussian', 'hierarchical']
 
-    db.create_telemetry_data_table()
-    db.create_race_lap_data()
+    # for method in cluster_methods:
+    #     db.clustering_results(method)
+
+    # db.create_telemetry_data_table()
+    # db.create_race_lap_data()
+
+    ## METHODS FOR QUERYING THE TABLE
+    db.query_driver_telemetry
+
 
 if __name__ == "__main__":
     main()

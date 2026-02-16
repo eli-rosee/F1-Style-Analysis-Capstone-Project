@@ -1,6 +1,8 @@
 from psycopg2 import Error
 import json
 import pandas as pd
+import os
+import glob
 from sqlalchemy import create_engine
 from postgresql_db import telemetry_database
 
