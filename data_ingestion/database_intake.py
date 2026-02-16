@@ -15,13 +15,16 @@ def get_drivers_from_race(race_name):
     return drivers
 
 #reads a filepath for a json file and returns it as a pandas dataframe
-def process_tel_file(filepath):
+def process_tel_file(filepath, lap_num, driver_name):
     with open(filepath) as train_file:
         dict_train = json.load(train_file)['tel']
 
     train = pd.DataFrame(data=dict_train, index=None, columns=None, dtype=None, copy=None)
     train.rename(columns=schema_mapping, inplace=True)
     train.drop(['dataKey'], axis=1, inplace=True)
+
+    train['driver_id'] = driver_name
+    train['lap'] = lap_num
 
     return train
 
@@ -38,8 +41,9 @@ def convert_race_to_dataframe_list(race_name, driver_name):
     
     #Loop through the files and place the DataFrames into a list
     for file in file_list:
-        print(f"Reading: {file}")
-        df = process_tel_file(file)
+        lap_num = int(''.join(filter(str.isdigit, file)))
+        # print(f"Reading: {file}")
+        df = process_tel_file(file, lap_num, driver_name)
         dataframe_list.append(df)
 
     if dataframe_list:

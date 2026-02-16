@@ -128,8 +128,8 @@ class telemetry_database():
 
             """)
 
-    def query_driver_telemetry(self, race, driver):
-        self.cursor.execute("SELECT * FROM race_lap_data;")
+    def fetch_driver_from_race_metadata(self, race_name, driver_name):
+        self.cursor.execute("SELECT * FROM race_lap_data WHERE driver_id = {driver_name}, race_name = {race_name};")
 
         # 4. Fetch all the results
         records = self.cursor.fetchall()
@@ -152,7 +152,7 @@ def main():
     # db.create_race_lap_data()
 
     ## METHODS FOR QUERYING THE TABLE
-    db.query_driver_telemetry
+    db.fetch_driver_from_race_metadata("Australian Grand Prix", "NOR")
 
 
 if __name__ == "__main__":
