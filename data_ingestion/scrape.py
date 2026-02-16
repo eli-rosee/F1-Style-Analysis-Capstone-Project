@@ -73,20 +73,20 @@ def main():
         
         laps_dict[abbr] = driver_laps
 
-    for driver, driver_num in enumerate(driver_key_dict.keys()):
+    for driver_num, driver in enumerate(driver_key_dict.keys()):
 
         print(f'\nProcessing data for driver {driver_num + 1} / {len(driver_key_dict.keys())} ({driver}):\n')
 
         # For each driver, obtain every lap of telemetry data, download, and save it
         for lap in range(1, laps_dict[driver] + 1):
-            addition_url = f'/{abbr}/{lap}{file_extension}'
+            addition_url = f'/{driver}/{lap}{file_extension}'
             download_url = url + addition_url
 
-            print(f'Processing - Driver {abbr}, Lap {lap}')
+            print(f'Processing - Driver {driver}, Lap {lap}')
             r = requests.get(download_url)
 
             if r.status_code == 200:
-                path = f'telemetry/{event_name.replace(" ", "_")}/{abbr}'
+                path = f'telemetry/{event_name.replace(" ", "_")}/{driver}'
                 os.makedirs(path, exist_ok=True)
 
                 with open(f'{path}/{lap}{file_extension}', 'wb') as f:

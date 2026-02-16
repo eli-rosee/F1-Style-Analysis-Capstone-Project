@@ -12,6 +12,8 @@ def get_drivers_from_race(race_name):
     base_path = os.path.join('telemetry', race_name)
     drivers = [d for d in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, d))]
 
+    return drivers
+
 #reads a filepath for a json file and returns it as a pandas dataframe
 def process_tel_file(filepath):
     with open(filepath) as train_file:
