@@ -8,6 +8,10 @@ from postgresql_db import telemetry_database
 
 schema_mapping = {"x":"track_coordinate_x", "y":"track_coordinate_y", "z":"track_coordinate_z"}
 
+def get_drivers_from_race(race_name):
+    base_path = os.path.join('telemetry', race_name)
+    drivers = [d for d in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, d))]
+
 #reads a filepath for a json file and returns it as a pandas dataframe
 def process_tel_file(filepath):
     with open(filepath) as train_file:
@@ -20,25 +24,21 @@ def process_tel_file(filepath):
     return train
 
 #given a race name (string), all telemetry files will be returned as a list of pandas dataframes
-def convert_race_to_dataframe_list(race_name):
+def convert_race_to_dataframe_list(race_name, driver_name):
 
     base_path = os.path.join('telemetry', race_name)
 
     #declare empty list to store pandas dataframes
     dataframe_list = []
 
-    #get list of all drivers in the race directory
-    drivers = [d for d in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, d))]
-
-    for driver in drivers:
-        search_pattern = os.path.join(base_path, driver, "*_tel.json")
-        file_list = glob.glob(search_pattern)
-
-        #Loop through the files and place the DataFrames into a list
-        for file in file_list:
-            print(f"Reading: {file}")
-            df = process_tel_file(file)
-            dataframe_list.append(df)
+    search_pattern = os.path.join(base_path, driver_name, "*_tel.json")
+    file_list = glob.glob(search_pattern)
+    
+    #Loop through the files and place the DataFrames into a list
+    for file in file_list:
+        print(f"Reading: {file}")
+        df = process_tel_file(file)
+        dataframe_list.append(df)
 
     if dataframe_list:
         #return a list of pandas dataframes
@@ -50,6 +50,8 @@ def convert_race_to_dataframe_list(race_name):
     #if no file directory is found, return empty list
     return []
 
+# def insert_race_database(race_name, year, )
+
 def main():
     # DB connection SQLAlchemy engine
     user = telemetry_database.user
@@ -60,7 +62,10 @@ def main():
 
     engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}")
 
-    dataframe_list = convert_race_to_dataframe_list("Australian_Grand_Prix")
+    drivers = get_drivers_from_race("Australian_Grand_Prix")
+
+    for driver in drivers:
+        dataframe_list = convert_race_to_dataframe_list("Australian_Grand_Prix", driver)
 
     VALID_COLUMNS = [
         "time", "distance", "rel_distance",
@@ -105,7 +110,6 @@ def main():
             break
 
     print(f"Done. Inserted {inserted} telemetry rows.")
-
 
 if __name__ == "__main__":
     main()
