@@ -55,6 +55,8 @@ def convert_race_to_dataframe_list(race_name, driver_name):
 # def insert_race_database(race_name, year, )
 
 def main():
+    raceName = "Australian_Grand_Prix"
+
     # DB connection SQLAlchemy engine
     user = telemetry_database.user
     password = telemetry_database.password
@@ -64,10 +66,10 @@ def main():
 
     engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}")
 
-    drivers = get_drivers_from_race("Australian_Grand_Prix")
+    drivers = get_drivers_from_race(raceName)
 
     for driver in drivers:
-        dataframe_list = convert_race_to_dataframe_list("Australian_Grand_Prix", driver)
+        dataframe_list = convert_race_to_dataframe_list(raceName, driver)
 
     VALID_COLUMNS = [
         "time", "distance", "rel_distance",
