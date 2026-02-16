@@ -56,8 +56,6 @@ def convert_race_to_dataframe_list(race_name, driver_name):
     #if no file directory is found, return empty list
     return []
 
-# def insert_race_database(race_name, year, )
-
 def main():
     raceName = "Australian_Grand_Prix"
 
