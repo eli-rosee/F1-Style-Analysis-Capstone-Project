@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2 import Error
 import numpy as np
+import fastf1
 
 class telemetry_database():
 
@@ -196,13 +197,25 @@ def main():
     # db.create_telemetry_data_table()
     # db.create_race_lap_data()
 
+    # for race in race_code_map.keys():    
+    #     session = fastf1.get_session(2025, race, 'R')
+    #     session.load()
+    #     event_name = session.event['EventName']
+    #     event_name = event_name.replace(" ", "_")
+
+    #     # Iterate through all drivers and store their abbreviations
+    #     for driver in session.drivers:
+    #         abbr = session.get_driver(driver)['Abbreviation']
+    #         db.fetch_driver_laps(race_code_map[event_name], abbr)
+            
+
     tel_select_cols = [telemetry_columns[i] for i in [1]]
 
-    db.fetch_driver_laps('CAN', "RUS")
+    # db.fetch_driver_telemetry("SAO", "RUS", tel_select_cols)
 
-    # for race in race_code_map.keys():
-    #     print("RACE: " + race)
-    #     db.fetch_driver_telemetry(race_code_map[race], "RUS", tel_select_cols)
+    for race in race_code_map.keys():
+        print("RACE: " + race)
+        db.fetch_driver_telemetry(race_code_map[race], "RUS", tel_select_cols)
 
     ## METHODS FOR QUERYING THE TABLE
     # db.fetch_driver_telemetry("AUS", "NOR", tel_select_cols)

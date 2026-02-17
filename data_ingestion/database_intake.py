@@ -4,7 +4,6 @@ import pandas as pd
 import os
 import glob
 import fastf1
-from sqlalchemy import create_engine
 from postgresql_db import telemetry_database
 
 schema_mapping = {"x":"track_coordinate_x", "y":"track_coordinate_y", "z":"track_coordinate_z"}
@@ -80,108 +79,112 @@ def main():
         s = i.replace(" ", "_")
         raceNameList.append(s)
 
-    # DB connection SQLAlchemy engine
-    user = telemetry_database.user
-    password = telemetry_database.password
-    host = telemetry_database.host
-    dbname = telemetry_database.database
-    port = 5432
+    # DB connection
+    db = telemetry_database()
+    db.conn.autocommit = False
 
-    engine = create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}")
+    VALID_COLUMNS = [
+        "time", "distance", "rel_distance",
+        "track_coordinate_x", "track_coordinate_y", "track_coordinate_z",
+        "rpm", "gear", "throttle", "brake",
+        "speed", "acc_x", "acc_y", "acc_z"
+    ]
+
+    inserted_lap = 1
     
     #loop through all races for a certain season
     for raceName in raceNameList:
 
         drivers = get_drivers_from_race(raceName)
 
-        VALID_COLUMNS = [
-            "tel_index",
-            "time", "distance", "rel_distance",
-            "track_coordinate_x", "track_coordinate_y", "track_coordinate_z",
-            "rpm", "gear", "throttle", "brake",
-            "speed", "acc_x", "acc_y", "acc_z"
-        ]
-
-        # Get next ids, lap_data_id is not auto generated
-        with engine.connect() as conn:
-            next_tel_index = pd.read_sql(
-                "SELECT COALESCE(MAX(tel_index), 0) + 1 AS nxt FROM telemetry_data",
-                conn
-            ).iloc[0]["nxt"]
-
-            next_lap_data_id = pd.read_sql(
-                "SELECT COALESCE(MAX(lap_data_id), 0) + 1 AS nxt FROM race_lap_data",
-                conn
-            ).iloc[0]["nxt"]
-
-        inserted_tel = 0
-        inserted_lap = 0
-
-        #try to insert data from all races, if data for a race is not present in the directory, then continue
-        try:
-
-            for driver in drivers:
-                dataframe_list = convert_race_to_dataframe_list(raceName, driver)
-
-                for i, df in enumerate(dataframe_list, start=1):
-                    # Saving these before filtering columns
-                    driver_id = df["driver_id"].iloc[0]
-                    lap_num = int(df["lap"].iloc[0])
-
-                    # keep only expected telemetry columns (copy prevents SettingWithCopyWarning)
-                    df = df[[c for c in df.columns if c in VALID_COLUMNS]].copy()
-
-                    # normalize brake
-                    if "brake" in df.columns:
-                        df["brake"] = df["brake"].astype(bool)
-
-                    # normalize gear (0-8 per DB check)
-                    if "gear" in df.columns:
-                        df["gear"] = pd.to_numeric(df["gear"], errors="coerce")
-                        df.loc[~df["gear"].between(0, 8), "gear"] = pd.NA
-
-                    # validate throttle (0-100 per DB check)
-                    if "throttle" in df.columns:
-                        df["throttle"] = pd.to_numeric(df["throttle"], errors="coerce")
-                        df.loc[~df["throttle"].between(0, 100), "throttle"] = pd.NA
-
-                    # assign tel_index for every telemetry row in this df
-                    n = len(df)
-                    df["tel_index"] = range(next_tel_index, next_tel_index + n)
-
-                    # build race_lap_data rows (one per telemetry row)
-                    lap_df = pd.DataFrame({
-                        "lap_data_id": range(next_lap_data_id, next_lap_data_id + n),
-                        "driver_id": [driver_id] * n,
-                        "lap": [lap_num] * n,
-                        "race_name": [race_code_map[raceName]] * n,
-                        "year": [year] * n,
-                        "tel_index": df["tel_index"].values
-                    })
-
-                    try:
-                        # insert telemetry rows
-                        df.to_sql("telemetry_data", con=engine, if_exists="append", index=False, method="multi")
-                        inserted_tel += n
-                        next_tel_index += n
-
-                        # insert race_lap_data rows
-                        lap_df.to_sql("race_lap_data", con=engine, if_exists="append", index=False, method="multi")
-                        inserted_lap += n
-                        next_lap_data_id += n
-
-                        print(f"{driver} lap {lap_num}: +{n} telemetry, +{n} race_lap_data (tot_tel={inserted_tel}, tot_lap={inserted_lap})")
-
-                    except Exception as e:
-                        msg = str(e).split("\n")[0]
-                        print(f"INSERT FAILED for {driver}: {msg}")
-                        return
-        
-        except Exception as e:
+        if not drivers:
             print(f"Skipping: No data found for {raceName}")
             continue
 
-    print(f"Done. Inserted {inserted_tel} telemetry rows and {inserted_lap} race_lap_data rows.")
+        for driver in drivers:
+            dataframe_list = convert_race_to_dataframe_list(raceName, driver)
+
+            for df in dataframe_list:
+                # Saving these before filtering columns
+                driver_id = df["driver_id"].iloc[0]
+                lap_num = int(df["lap"].iloc[0])
+
+                # keep only expected telemetry columns (copy prevents SettingWithCopyWarning)
+                df = df[[c for c in df.columns if c in VALID_COLUMNS]].copy()
+
+                # normalize brake
+                if "brake" in df.columns:
+                    df["brake"] = df["brake"].astype(bool)
+
+                # normalize gear (0-8 per DB check)
+                if "gear" in df.columns:
+                    df["gear"] = pd.to_numeric(df["gear"], errors="coerce")
+                    df["gear"] = df["gear"].where(df["gear"].between(0, 8), other=None)
+                    df["gear"] = df["gear"].astype(object).where(df["gear"].notna(), other=None)
+
+                # validate throttle (0-100 per DB check)
+                if "throttle" in df.columns:
+                    df["throttle"] = pd.to_numeric(df["throttle"], errors="coerce")
+                    df["throttle"] = df["throttle"].where(df["throttle"].between(0, 100), other=None)
+                    df["throttle"] = df["throttle"].astype(object).where(df["throttle"].notna(), other=None)
+
+                # assign tel_index for every telemetry row in this df
+                n = len(df)
+                cols_str = ", ".join(df.columns)
+                placeholders_str = ", ".join([f"%({c})s" for c in df.columns])
+                generated_indices = []
+                records = df.to_dict(orient="records")
+
+                for record in records:
+                    db.cursor.execute(
+                        f"INSERT INTO telemetry_data ({cols_str}) VALUES ({placeholders_str}) RETURNING tel_index",
+                        record
+                    )
+
+                    for row in db.cursor.fetchall():
+                        generated_indices.append(row[0])
+
+                db.conn.commit()
+
+                if len(generated_indices) != n:
+                    raise Exception(f"Telemetry insert returned {len(generated_indices)} indices but expected {n} for {driver} lap {lap_num}")
+
+                lap_records = []
+
+                for i in range(n):
+
+                    record = {
+                        "lap_data_id": inserted_lap + i,
+                        "driver_id": driver_id,
+                        "lap": lap_num,
+                        "race_name": race_code_map[raceName],
+                        "year": year,
+                        "tel_index": generated_indices[i]
+                    }
+
+                    lap_records.append(record)
+
+                db.cursor.executemany(
+                    "INSERT INTO race_lap_data (lap_data_id, driver_id, lap, race_name, year, tel_index) "
+                    "VALUES (%(lap_data_id)s, %(driver_id)s, %(lap)s, %(race_name)s, %(year)s, %(tel_index)s)",
+                    lap_records
+                )
+
+                db.conn.commit()
+                inserted_lap += n
+
+                print(f"{driver} lap {lap_num}: +{n} rows inserted")
+                
+        db.cursor.execute("SELECT COUNT(*) FROM telemetry_data")
+        actual_inserted_tel = db.cursor.fetchone()[0]
+
+        db.cursor.execute("SELECT COUNT(*) FROM race_lap_data")
+        actual_inserted_lap = db.cursor.fetchone()[0]
+            
+        if actual_inserted_tel != actual_inserted_lap:
+            raise Exception(f"Final mismatch: inserted {actual_inserted_tel} telemetry rows vs {actual_inserted_lap} race_lap_data rows")
+
+    print(f"Done. Inserted {actual_inserted_tel} telemetry rows and {actual_inserted_lap} race_lap_data rows.")
     
 if __name__ == "__main__":
     main()
