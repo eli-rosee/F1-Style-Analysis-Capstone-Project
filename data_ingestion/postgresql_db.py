@@ -144,7 +144,7 @@ class telemetry_database():
     
     def fetch_driver_telemetry(self, race_name, driver_name, telemetry_column):
         tel_index_list = self.fetch_driver_metadata(race_name, driver_name)
-        self.cursor.execute(f"SELECT {telemetry_column} FROM telemetry_data WHERE tel_index IN ({tel_index_list});")
+        self.cursor.execute(f"SELECT ({telemetry_column}) FROM telemetry_data WHERE tel_index IN ({tel_index_list});")
 
         records = self.cursor.fetchall()
         resulting_list = []
@@ -172,8 +172,12 @@ def main():
     # db.create_telemetry_data_table()
     # db.create_race_lap_data()
 
+    tel_select_cols = [telemetry_columns[i] for i in [1, 3, 4]]
+
+    print(tel_select_cols)
+
     ## METHODS FOR QUERYING THE TABLE
-    db.fetch_driver_telemetry("AUS", "NOR", telemetry_columns[1])
+    db.fetch_driver_telemetry("AUS", "NOR", tel_select_cols)
 
 if __name__ == "__main__":
     main()
