@@ -181,11 +181,18 @@ def main():
     db = telemetry_database()
     telemetry_columns = ['time', 'distance', 'rel_distance', 'track_coordinate_x', 'track_coordinate_y', 'track_coordinate_z', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'speed', 'acc_x', 'acc_y', 'acc_z']
 
-    race_code_map = {"Belgian_Grand_Prix" : "BEL", "Chinese_Grand_Prix" : "CHN", "Hungarian_Grand_Prix" : "HUN", "Japanese_Grand_Prix" : "JPN", "Dutch_Grand_Prix" : "NED",
+    original_race_code_map = {"Belgian_Grand_Prix" : "BEL", "Chinese_Grand_Prix" : "CHN", "Hungarian_Grand_Prix" : "HUN", "Japanese_Grand_Prix" : "JPN", "Dutch_Grand_Prix" : "NED",
                     "Bahrain_Grand_Prix" : "BAH", "Italian_Grand_Prix" : "ITA", "Saudi_Arabian_Grand_Prix" : "SAU", "Azerbaijan_Grand_Prix" : "AZE", "Miami_Grand_Prix" : "MIA",
                     "Singapore_Grand_Prix" : "SIN", "Emilia_Romagna_Grand_Prix" : "EMI", "United_States_Grand_Prix" : "USA", "Monaco_Grand_Prix" : "MON", "Mexico_City_Grand_Prix" : "MEX",
                     "Spanish_Grand_Prix" : "ESP", "São_Paulo_Grand_Prix" : "SAO", "Canadian_Grand_Prix" : "CAN", "Las_Vegas_Grand_Prix" : "LAS", "Australian_Grand_Prix" : "AUS",
                     "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU",
+                    }
+
+    race_code_map = {"Belgian_Grand_Prix" : "BEL", "Hungarian_Grand_Prix" : "HUN", "Dutch_Grand_Prix" : "NED",
+                    "Italian_Grand_Prix" : "ITA", "Azerbaijan_Grand_Prix" : "AZE",
+                    "Singapore_Grand_Prix" : "SIN", "United_States_Grand_Prix" : "USA", "Mexico_City_Grand_Prix" : "MEX",
+                    "São_Paulo_Grand_Prix" : "SAO", "Las_Vegas_Grand_Prix" : "LAS",
+                    "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU", "Austrian_Grand_Prix": "AUT"
                     }
 
     ## METHODS FOR INITIAL TABLE CREATION
