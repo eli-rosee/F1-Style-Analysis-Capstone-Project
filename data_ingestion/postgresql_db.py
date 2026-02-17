@@ -1,5 +1,6 @@
 import psycopg2
 from psycopg2 import Error
+import numpy as np
 
 class telemetry_database():
 
@@ -128,19 +129,39 @@ class telemetry_database():
 
             """)
 
-    def fetch_driver_from_race_metadata(self, race_name, driver_name):
-        self.cursor.execute(f"SELECT * FROM race_lap_data WHERE driver_id = '{driver_name}' AND race_name = '{race_name}';")
+    def fetch_driver_metadata(self, race_name, driver_name):
+        self.cursor.execute(f"SELECT tel_index FROM race_lap_data WHERE driver_id = '{driver_name}' AND race_name = '{race_name}';")
 
         # Fetch all the results
         records = self.cursor.fetchall()
+        records_refined = []
 
-        # Print the records
-        print("Selected rows:")
-        for row in records:
-            print(row) # Each row is a tuple
+        for record in records:
+            records_refined.append(record[0])
+            
+        output_string = ', '.join(map(str, records_refined))
+        return output_string
+    
+    def fetch_driver_telemetry(self, race_name, driver_name, telemetry_column):
+        tel_index_list = self.fetch_driver_metadata(race_name, driver_name)
+        self.cursor.execute(f"SELECT {telemetry_column} FROM telemetry_data WHERE tel_index IN ({tel_index_list});")
+
+        records = self.cursor.fetchall()
+        resulting_list = []
+
+        for record in records:
+            resulting_list.append(record)
+
+        numpy_array = np.array(resulting_list)
+        print("\nResulting numpy array of query: \n")
+        print(numpy_array)
+        print()
+
+        return numpy_array
 
 def main():
     db = telemetry_database()
+    telemetry_columns = ['time', 'distance', 'rel_distance', 'track_coordinate_x', 'track_coordinate_y', 'track_coordinate_z', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'speed', 'acc_x', 'acc_y', 'acc_z']
 
     ## METHODS FOR INITIAL TABLE CREATION
     # cluster_methods = ['kmeans', 'dbscan', 'fuzzyc', 'gaussian', 'hierarchical']
@@ -152,7 +173,7 @@ def main():
     # db.create_race_lap_data()
 
     ## METHODS FOR QUERYING THE TABLE
-    db.fetch_driver_from_race_metadata("AUS", "NOR")
+    db.fetch_driver_telemetry("AUS", "NOR", telemetry_columns[1])
 
 if __name__ == "__main__":
     main()
