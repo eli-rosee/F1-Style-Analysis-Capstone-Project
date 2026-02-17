@@ -20,7 +20,7 @@ def load_scraped_telemetry_data(telemetry_dir='./telemetry', race_name=None):
     
     Expected structure (from your scrape.py):
     telemetry/
-        Monaco_Grand_Prix/
+        Canada_Grand_Prix/
             VER/
                 1_tel.json
                 2_tel.json
@@ -34,7 +34,7 @@ def load_scraped_telemetry_data(telemetry_dir='./telemetry', race_name=None):
     telemetry_dir : str
         Path to the telemetry folder (default: './telemetry')
     race_name : str
-        Specific race folder name (e.g., 'Monaco_Grand_Prix'), or None for all races
+        Specific race folder name (e.g., 'Canada_Grand_Prix'), or None for all races
     
     Returns:
     --------
@@ -160,7 +160,7 @@ def load_tracing_insights_data(data_directory, race_name=None, session_type='Rac
     data_directory : str
         Path to TracingInsights data folder
     race_name : str
-        Specific race to load (e.g., 'Monaco'). If None, loads all races.
+        Specific race to load (e.g., 'Canada'). If None, loads all races.
     session_type : str
         'Race', 'Q1', 'Q2', 'Q3', etc.
     
@@ -242,7 +242,7 @@ def load_tracing_insights_data(data_directory, race_name=None, session_type='Rac
     return df_combined
 
 
-def run_clustering_analysis(df, n_clusters=5, output_dir='./clustering_results'):
+def run_clustering_analysis(df, n_clusters=3, output_dir='./clustering_results'):
     """
     Run complete K-Means clustering analysis on telemetry data.
     
@@ -419,7 +419,7 @@ if __name__ == "__main__":
     RACE_NAME = "Canadian_Grand_Prix"  # e.g., "Monaco_Grand_Prix" (with underscores!) or None
     
     # Number of clusters for K-Means
-    N_CLUSTERS = 5
+    N_CLUSTERS = 3
     
     # Output directory for results
     OUTPUT_DIR = "./clustering_results"
