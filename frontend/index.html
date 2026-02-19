@@ -106,7 +106,7 @@
 
     .driver-stats {
       width: 300px;
-      height: 90%;
+      height: 380px;
       border: 2px solid #555;
       border-radius: 10px;
       background: #f0f0f5;
@@ -156,27 +156,26 @@
       <div class="driver-header">
         <h1>F1 Telemetry Insights Visual Dashboard</h1>
         <p>Driver Selection</p>
-
         <div class="teams-container">
           <div class="team-block">
-            <div class="team-name">Red Bull</div>
+            <div class="team-name">Red Bull Racing</div>
             <button>Verstappen</button>
-            <button>Pérez</button>
+            <button>Tsunoda</button>
           </div>
           <div class="team-block">
             <div class="team-name">Ferrari</div>
             <button>Leclerc</button>
-            <button>Sainz</button>
+            <button>Hamilton</button>
           </div>
           <div class="team-block">
             <div class="team-name">Mercedes</div>
-            <button>Hamilton</button>
+            <button>Antonelli</button>
             <button>Russell</button>
           </div>
           <div class="team-block">
             <div class="team-name">McLaren</div>
-            <button>Norris</button>
             <button>Piastri</button>
+            <button>Norris</button>
           </div>
           <div class="team-block">
             <div class="team-name">Aston Martin</div>
@@ -186,26 +185,26 @@
           <div class="team-block">
             <div class="team-name">Alpine</div>
             <button>Gasly</button>
-            <button>Ocon</button>
+            <button>Colapinto</button>
           </div>
           <div class="team-block">
             <div class="team-name">Williams</div>
+            <button>Sainz</button>
             <button>Albon</button>
-            <button>Sargeant</button>
           </div>
           <div class="team-block">
-            <div class="team-name">AlphaTauri</div>
-            <button>Tsunoda</button>
-            <button>Ricciardo</button>
+            <div class="team-name">Haas F1 Team</div>
+            <button>Ocon</button>
+            <button>Bearman</button>
           </div>
           <div class="team-block">
-            <div class="team-name">Alfa Romeo</div>
-            <button>Bottas</button>
-            <button>Zhou</button>
+            <div class="team-name">Racing Bulls</div>
+            <button>Lawson</button>
+            <button>Hadjar</button>
           </div>
           <div class="team-block">
-            <div class="team-name">Haas</div>
-            <button>Magnussen</button>
+            <div class="team-name">Kick Sauber</div>
+            <button>Bortoleto</button>
             <button>Hülkenberg</button>
           </div>
         </div>
@@ -222,8 +221,9 @@
 	<div class="map-controls">
 		<label for="track-select"><strong>Map Visualization:</strong></label>
     		<select id="track-select" class="track-dropdown">
-      			<option value="canada">Montreal, Canada - Circuit Gilles Villeneuve</option>
+      			<option value="default">Select a track</option>
       			<hr>
+			<option value="canada">Montreal, Canada - Circuit Gilles Villeneuve</option>
       			<option value="australia">Melbourne, Australia - Albert Park Circuit</option>
       			<option value="china">Shanghai, China - Shanghai International Circuit</option>
       			<option value="japan">Suzuka, Japan - Suzuka Circuit</option>
@@ -256,43 +256,83 @@
 
   </div>
 
+  <!--Chart.js Import-->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <!-- ----------------- JS for Multi-Driver Selection ----------------- -->
   <script>
-    const driverButtons = document.querySelectorAll('.team-block button');
-    const middlePanel = document.getElementById('middle-panel');
+	  const charts = {};
+	  const driverButtons = document.querySelectorAll('.team-block button');
+	  const middlePanel = document.getElementById('middle-panel');
+	  const selectedDrivers = new Set();
 
-    const selectedDrivers = new Set();
+	  driverButtons.forEach(button => {
+		  button.addEventListener('click', () => {
+			  const driverName = button.textContent;
+			  if (selectedDrivers.has(driverName)) {
+				  selectedDrivers.delete(driverName);
+				  button.classList.remove('selected');
+				  const driverBlock = document.getElementById(`driver-${driverName.replace(/\s/g, '-')}`);
+				  if (charts[driverName]) {
+					  charts[driverName].destroy();
+					  delete charts[driverName];
+				  }
+				  if (driverBlock) driverBlock.remove();
+			  } else {
+	  selectedDrivers.add(driverName);
+	  button.classList.add('selected');
 
-    driverButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        const driverName = button.textContent;
-
-        if (selectedDrivers.has(driverName)) {
-          selectedDrivers.delete(driverName);
-          const driverBlock = document.getElementById(`driver-${driverName.replace(/\s/g, '-')}`);
-          if (driverBlock) driverBlock.remove();
-          button.classList.remove('selected');
-        } else {
-          selectedDrivers.add(driverName);
-          button.classList.add('selected');
-
-          const statsBlock = document.createElement('div');
-          statsBlock.classList.add('driver-stats');
+	  const statsBlock = document.createElement('div');
+	  statsBlock.classList.add('driver-stats');
           statsBlock.id = `driver-${driverName.replace(/\s/g, '-')}`;
 
           const nameLabel = document.createElement('h2');
           nameLabel.textContent = driverName;
           statsBlock.appendChild(nameLabel);
 
-          const chartContainer = document.createElement('div');
-          chartContainer.id = `radar-chart-${driverName.replace(/\s/g, '-')}`;
-          chartContainer.style.width = '100%';
-          chartContainer.style.flex = '1';
-          chartContainer.style.display = 'flex';
-          chartContainer.style.justifyContent = 'center';
-          chartContainer.style.alignItems = 'center';
-          chartContainer.textContent = 'Radar chart goes here';
-          statsBlock.appendChild(chartContainer);
+          // Create canvas for radar chart
+	  const chartCanvas = document.createElement('canvas');
+	  chartCanvas.id = `radar-chart-${driverName.replace(/\s/g, '-')}`;
+	  chartCanvas.style.width = '100%';
+	  chartCanvas.style.height = '250px';
+
+	  statsBlock.appendChild(chartCanvas);
+	  middlePanel.appendChild(statsBlock);
+
+	  // Create radar chart
+	  const ctx = chartCanvas.getContext('2d');
+
+	  charts[driverName] = new Chart(ctx, {
+		  type: 'radar',
+		  data: {
+			  labels: ['Speed', 'Acceleration', 'Braking', 'Cornering', 'Consistency'],
+			  datasets: [{
+				  label: driverName,
+				  data: [
+					  Math.random() * 100,
+					  Math.random() * 100,
+					  Math.random() * 100,
+					  Math.random() * 100,
+					  Math.random() * 100
+				  ],
+				  fill: true,
+				  backgroundColor: 'rgba(225, 6, 0, 0.2)',
+				  borderColor: 'rgba(225, 6, 0, 1)',
+				  pointBackgroundColor: 'rgba(225, 6, 0, 1)'
+			  }]
+		  },
+		  options: {
+			  responsive: true,
+			  maintainAspectRatio: false,
+			  scales: {
+				  r: {
+					  beginAtZero: true,
+					  min: 0,
+					  max: 100
+				  }
+			  }
+		  }
+	  });
 
           middlePanel.appendChild(statsBlock);
         }
@@ -327,6 +367,8 @@
     	}
     });
   </script>
+
+
 </body>
 </html>
 
