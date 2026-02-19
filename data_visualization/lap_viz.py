@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib as plt
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -21,9 +23,10 @@ def main():
 
     db = query_db()
     tel_select_cols = [telemetry_columns[i] for i in [1, 3, 4]]
-    df_list = []
 
     df = db.fetch_driver_telemetry_by_lap(race_code_map["Canadian_Grand_Prix"], "RUS", tel_select_cols, 70)
+
+    print(df)
 
     plt.scatter(df['track_coordinate_x'], df['track_coordinate_y'], c=df['distance'], cmap='viridis')
     plt.colorbar(label='Distance')
