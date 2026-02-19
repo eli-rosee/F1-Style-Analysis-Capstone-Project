@@ -307,7 +307,6 @@
 		  data: {
 			  labels: ['Speed', 'Acceleration', 'Braking', 'Cornering', 'Consistency'],
 			  datasets: [{
-				  label: driverName,
 				  data: [
 					  Math.random() * 100,
 					  Math.random() * 100,
@@ -324,6 +323,11 @@
 		  options: {
 			  responsive: true,
 			  maintainAspectRatio: false,
+			  plugins: {
+				  legend: {
+					  display: false
+				  }
+			  },
 			  scales: {
 				  r: {
 					  beginAtZero: true,
