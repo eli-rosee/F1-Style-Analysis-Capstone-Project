@@ -12,21 +12,25 @@ def main():
                     "Spanish_Grand_Prix" : "ESP", "São_Paulo_Grand_Prix" : "SAO", "Canadian_Grand_Prix" : "CAN", "Las_Vegas_Grand_Prix" : "LAS", "Australian_Grand_Prix" : "AUS",
                     "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU",
                     }
-    
+
+    canadian_gp_drivers = [
+        "RUS", "VER", "ANT", "PIA", "LEC", "HAM", "ALO", "HUL",
+        "OCO", "SAI", "BEA", "TSU", "COL", "BOR", "GAS", "HAD",
+        "STR", "NOR", "LAW", "ALB"
+    ]
+
     db = query_db()
     tel_select_cols = [telemetry_columns[i] for i in [1, 3, 4]]
-    np_array = db.fetch_driver_telemetry(race_code_map["Canadian_Grand_Prix"], "RUS", tel_select_cols)
+    df_list = []
 
-    print(np_array)
+    df = db.fetch_driver_telemetry_by_lap(race_code_map["Canadian_Grand_Prix"], "RUS", tel_select_cols, 70)
 
-    # df = pd.DataFrame(np_array, columns=['Distance', 'X', 'Y'])
-
-    # plt.scatter(x, y, c=distance, cmap='viridis')
-    # plt.colorbar(label='Distance')
-    # plt.xlabel('X')
-    # plt.ylabel('Y')
-    # plt.title('Distance Metric Over Space')
-    # plt.show()
+    plt.scatter(df['track_coordinate_x'], df['track_coordinate_y'], c=df['distance'], cmap='viridis')
+    plt.colorbar(label='Distance')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.title('Distance Metric Over Space')
+    plt.show()
 
 if __name__=="__main__":
     main()

@@ -47,17 +47,50 @@ class query_db():
 
         for record in records:
             temp_record = record[0]
-            temp_record = ast.literal_eval(temp_record)
+            if(len(telemetry_column) != 1):
+                temp_record = ast.literal_eval(temp_record)
+                resulting_list.append([temp_record[i] for i in range(len(temp_record))])
+            else:
+                resulting_list.append(temp_record)
             # print([record[0][i] for i in range(len(record))])
-            resulting_list.append([temp_record[i] for i in range(len(temp_record))])
 
         df = pd.DataFrame(resulting_list, columns=telemetry_column)
 
-        print("\nReturning Pandas DataFrame of requested data\n")
+        print("\nReturning Pandas DataFrame of requested data")
 
         return df
     
-    # def fetch_driver_telemetry_by_lap(self, race_name, driver_name, telemetry_column):
+    def fetch_driver_telemetry_by_lap(self, race_name, driver_name, telemetry_column, lap_num):
+        self.db.cursor.execute(f"SELECT tel_index FROM race_lap_data WHERE driver_id = '{driver_name}' AND race_name = '{race_name}' AND lap = '{lap_num}';")
+
+        # Fetch all the results
+        records = self.db.cursor.fetchall()
+        records_refined = []
+        
+        for record in records:
+            records_refined.append(record[0])
+            
+        tel_index_list = ', '.join(map(str, records_refined))
+
+        telemetry_column_string = ', '.join(map(str, telemetry_column))
+        self.db.cursor.execute(f"SELECT ({telemetry_column_string}) FROM telemetry_data WHERE tel_index IN ({tel_index_list});")
+
+        records = self.db.cursor.fetchall()
+        resulting_list = []
+
+        for record in records:
+            temp_record = record[0]
+            if(len(telemetry_column) != 1):
+                temp_record = ast.literal_eval(temp_record)
+                resulting_list.append([temp_record[i] for i in range(len(temp_record))])
+            else:
+                resulting_list.append(temp_record)
+
+        df = pd.DataFrame(resulting_list, columns=telemetry_column)
+
+        print("\nReturning Pandas DataFrame of requested data")
+
+        return df
 
     
 def main():
@@ -77,7 +110,8 @@ def main():
 
     for race in race_code_map.keys():
         print("RACE: " + race)
-        db.fetch_driver_telemetry(race_code_map[race], "RUS", tel_select_cols)
+        df = db.fetch_driver_telemetry(race_code_map[race], "RUS", tel_select_cols)
+        print(df)
 
     
 if __name__ == "__main__":
