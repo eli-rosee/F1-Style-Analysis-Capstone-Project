@@ -1,3 +1,5 @@
+from data_ingestion.query_db import query_db
+
 import matplotlib.pyplot as plt
 from kneed import KneeLocator
 from sklearn.datasets import make_blobs
