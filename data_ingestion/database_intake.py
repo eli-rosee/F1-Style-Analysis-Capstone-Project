@@ -12,8 +12,8 @@ schema_mapping = {"x":"track_coordinate_x", "y":"track_coordinate_y", "z":"track
 race_code_map = {"Belgian_Grand_Prix" : "BEL", "Chinese_Grand_Prix" : "CHN", "Hungarian_Grand_Prix" : "HUN", "Japanese_Grand_Prix" : "JPN", "Dutch_Grand_Prix" : "NED",
                  "Bahrain_Grand_Prix" : "BAH", "Italian_Grand_Prix" : "ITA", "Saudi_Arabian_Grand_Prix" : "SAU", "Azerbaijan_Grand_Prix" : "AZE", "Miami_Grand_Prix" : "MIA",
                  "Singapore_Grand_Prix" : "SIN", "Emilia_Romagna_Grand_Prix" : "EMI", "United_States_Grand_Prix" : "USA", "Monaco_Grand_Prix" : "MON", "Mexico_City_Grand_Prix" : "MEX",
-                 "Spanish_Grand_Prix" : "ESP", "São_Paulo_Grand_Prix" : "SAO", "Canadian_Grand_Prix" : "CAN", "Las_Vegas_Grand_Prix" : "LAS", "Australian_Grand_Prix" : "AUS",
-                 "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU",
+                 "Spanish_Grand_Prix" : "ESP", "São_Paulo_Grand_Prix" : "SAO", "Las_Vegas_Grand_Prix" : "LAS", "Australian_Grand_Prix" : "AUS",
+                 "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU", "Austrian_Grand_Prix": "AUT"
                  }
 
 #given a race name, return a list of drivers
@@ -77,7 +77,8 @@ def main():
     raceNameList = []
     for i in schedule:
         s = i.replace(" ", "_")
-        raceNameList.append(s)
+        if s != "Canadian_Grand_Prix":
+            raceNameList.append(s)
 
     # DB connection
     db = telemetry_database()
@@ -90,7 +91,8 @@ def main():
         "speed", "acc_x", "acc_y", "acc_z"
     ]
 
-    inserted_lap = 1
+    db.cursor.execute("SELECT COALESCE(MAX(lap_data_id), 0) + 1 FROM race_lap_data")
+    inserted_lap = db.cursor.fetchone()[0]
     
     #loop through all races for a certain season
     for raceName in raceNameList:

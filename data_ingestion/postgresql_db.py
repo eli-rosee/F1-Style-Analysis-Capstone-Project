@@ -188,13 +188,6 @@ def main():
                     "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU",
                     }
 
-    race_code_map = {"Belgian_Grand_Prix" : "BEL", "Hungarian_Grand_Prix" : "HUN", "Dutch_Grand_Prix" : "NED",
-                    "Italian_Grand_Prix" : "ITA", "Azerbaijan_Grand_Prix" : "AZE",
-                    "Singapore_Grand_Prix" : "SIN", "United_States_Grand_Prix" : "USA", "Mexico_City_Grand_Prix" : "MEX",
-                    "São_Paulo_Grand_Prix" : "SAO", "Las_Vegas_Grand_Prix" : "LAS",
-                    "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU", "Austrian_Grand_Prix": "AUT"
-                    }
-
     ## METHODS FOR INITIAL TABLE CREATION
     # cluster_methods = ['kmeans', 'dbscan', 'fuzzyc', 'gaussian', 'hierarchical']
 
