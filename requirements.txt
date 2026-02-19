@@ -4,3 +4,4 @@ urllib3==2.6.3
 psycopg2-binary==2.9.11
 pandas==2.2.2
 sqlalchemy==2.0.30
+seaborn==0.13.2

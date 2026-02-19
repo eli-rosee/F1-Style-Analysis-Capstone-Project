@@ -1,5 +1,7 @@
 from data_ingestion.postgresql_db import telemetry_database
 import numpy as np
+import pandas as pd
+import ast
 
 class query_db():
 
@@ -44,14 +46,19 @@ class query_db():
         resulting_list = []
 
         for record in records:
-            resulting_list.append(record)
+            temp_record = record[0]
+            temp_record = ast.literal_eval(temp_record)
+            # print([record[0][i] for i in range(len(record))])
+            resulting_list.append([temp_record[i] for i in range(len(temp_record))])
 
-        numpy_array = np.array(resulting_list)
-        print("\nResulting numpy array of query: \n")
-        print(numpy_array)
-        print()
+        df = pd.DataFrame(resulting_list, columns=telemetry_column)
 
-        return numpy_array
+        print("\nReturning Pandas DataFrame of requested data\n")
+
+        return df
+    
+    # def fetch_driver_telemetry_by_lap(self, race_name, driver_name, telemetry_column):
+
     
 def main():
     db = query_db()
