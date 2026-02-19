@@ -4,4 +4,12 @@ urllib3==2.6.3
 psycopg2-binary==2.9.11
 pandas==2.2.2
 sqlalchemy==2.0.30
+<<<<<<< HEAD
 seaborn==0.13.2
+=======
+numpy==1.26.4
+scikit-learn==1.4.2
+matplotlib==3.8.4
+seaborn==0.13.2
+scipy==1.13.1
+>>>>>>> f4d2d7525a984e2959cc45055f5d8f291aebfd1c
