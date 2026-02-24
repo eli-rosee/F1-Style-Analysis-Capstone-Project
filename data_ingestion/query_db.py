@@ -5,9 +5,10 @@ import ast
 
 class query_db():
 
+    #constructor
     def __init__(self):
         self.db = telemetry_database()
-
+    
     def fetch_driver_laps(self, race_name, driver_name):
         self.db.cursor.execute(f"SELECT lap FROM race_lap_data WHERE driver_id = '{driver_name}' AND race_name = '{race_name}';")
 
@@ -24,7 +25,9 @@ class query_db():
         print(records_refined)
         print()
 
-    def fetch_driver_metadata(self, race_name, driver_name):
+    #HELPER FUNCTION, DO NOT CALL
+    #returns a list of strings containing the tel_index value for the specified driver on the specified race
+    def _fetch_driver_metadata(self, race_name, driver_name):
         self.db.cursor.execute(f"SELECT tel_index FROM race_lap_data WHERE driver_id = '{driver_name}' AND race_name = '{race_name}';")
 
         # Fetch all the results
@@ -37,8 +40,10 @@ class query_db():
         output_string = ', '.join(map(str, records_refined))
         return output_string
     
+    #Returns a list of pandas dataframes given a race_name, driver_name, specified telemetry_columns
+    #Returns data for an ENTIRE race
     def fetch_driver_telemetry(self, race_name, driver_name, telemetry_column):
-        tel_index_list = self.fetch_driver_metadata(race_name, driver_name)
+        tel_index_list = self._fetch_driver_metadata(race_name, driver_name)
         telemetry_column_string = ', '.join(map(str, telemetry_column))
         self.db.cursor.execute(f"SELECT ({telemetry_column_string}) FROM telemetry_data WHERE tel_index IN ({tel_index_list});")
 
@@ -60,6 +65,9 @@ class query_db():
 
         return df
     
+    #GOOD for Clustering
+    #Returns a list of pandas dataframes given a race_name, driver_name, specified telemetry_columns and lap number
+    #telemetry_column must be a list of strings - see main func for acceptable column entries
     def fetch_driver_telemetry_by_lap(self, race_name, driver_name, telemetry_column, lap_num):
         self.db.cursor.execute(f"SELECT tel_index FROM race_lap_data WHERE driver_id = '{driver_name}' AND race_name = '{race_name}' AND lap = '{lap_num}';")
 
@@ -95,6 +103,8 @@ class query_db():
     
 def main():
     db = query_db()
+
+    #acceptable columns for queries on telemetry data
     telemetry_columns = ['time', 'distance', 'rel_distance', 'track_coordinate_x', 'track_coordinate_y', 'track_coordinate_z', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'speed', 'acc_x', 'acc_y', 'acc_z']
 
     race_code_map = {"Belgian_Grand_Prix" : "BEL", "Chinese_Grand_Prix" : "CHN", "Hungarian_Grand_Prix" : "HUN", "Japanese_Grand_Prix" : "JPN", "Dutch_Grand_Prix" : "NED",
@@ -105,8 +115,6 @@ def main():
                     }
 
     tel_select_cols = [telemetry_columns[i] for i in [1]]
-
-    # db.fetch_driver_telemetry("SAO", "RUS", tel_select_cols)
 
     for race in race_code_map.keys():
         print("RACE: " + race)

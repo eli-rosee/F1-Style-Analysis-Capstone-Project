@@ -7,6 +7,18 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
+#Get data from the database
+
+telColumns = ["speed", "rpm"]
+queryDB = query_db()
+
+#get a list of pandas dataframes
+telemetryList = queryDB.fetch_driver_telemetry_by_lap("CAN", "HAM", telColumns, 3)
+print(telemetryList)
+
+
+#KMEANS Clustering
+
 #Generate synthetic data and labels
 features, true_labels = make_blobs(
     n_samples=200,
