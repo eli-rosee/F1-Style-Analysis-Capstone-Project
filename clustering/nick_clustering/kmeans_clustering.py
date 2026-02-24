@@ -1,5 +1,6 @@
 from data_ingestion.query_db import query_db
 
+import pandas as pd
 import matplotlib.pyplot as plt
 from kneed import KneeLocator
 from sklearn.datasets import make_blobs
@@ -9,13 +10,18 @@ from sklearn.preprocessing import StandardScaler
 
 #Get data from the database
 
-telColumns = ["speed", "rpm"]
+telColumns = ["rpm"]
 queryDB = query_db()
 
 #get a list of pandas dataframes
-telemetryList = queryDB.fetch_driver_telemetry_by_lap("CAN", "HAM", telColumns, 3)
-print(telemetryList)
+telemetryData = queryDB.fetch_driver_telemetry_by_lap("CAN", "HAM", telColumns, 3)
 
+#extract features from giant dataframe and drop missing values
+featuresRaw = telemetryData[telColumns].dropna()
+
+#Feature scaling using standardization
+scaler = StandardScaler()
+scaled_features = scaler.fit_transform(featuresRaw)
 
 #KMEANS Clustering
 
@@ -24,12 +30,8 @@ features, true_labels = make_blobs(
     n_samples=200,
     centers=3,
     cluster_std=2.75,
-    random_state=None #42 is used in example, best practice is to set to None
+    random_state=42 #42 is used in example, best practice is to set to None
 )
-
-#Feature scaling using standardization
-scaler = StandardScaler()
-scaled_features = scaler.fit_transform(features)
 
 #Instantiate the Kmeans class
 kmeans = KMeans(

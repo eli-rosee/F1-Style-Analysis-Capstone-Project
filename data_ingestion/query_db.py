@@ -26,7 +26,7 @@ class query_db():
         print()
 
     #HELPER FUNCTION, DO NOT CALL
-    #returns a list of strings containing the tel_index value for the specified driver on the specified race
+    #returns a string containing the tel_index value for the specified driver on the specified race
     def _fetch_driver_metadata(self, race_name, driver_name):
         self.db.cursor.execute(f"SELECT tel_index FROM race_lap_data WHERE driver_id = '{driver_name}' AND race_name = '{race_name}';")
 
@@ -40,7 +40,7 @@ class query_db():
         output_string = ', '.join(map(str, records_refined))
         return output_string
     
-    #Returns a list of pandas dataframes given a race_name, driver_name, specified telemetry_columns
+    #Returns a pandas dataframes given a race_name, driver_name, specified telemetry_columns
     #Returns data for an ENTIRE race
     def fetch_driver_telemetry(self, race_name, driver_name, telemetry_column):
         tel_index_list = self._fetch_driver_metadata(race_name, driver_name)
@@ -66,7 +66,7 @@ class query_db():
         return df
     
     #GOOD for Clustering
-    #Returns a list of pandas dataframes given a race_name, driver_name, specified telemetry_columns and lap number
+    #Returns a pandas dataframes given a race_name, driver_name, specified telemetry_columns and lap number
     #telemetry_column must be a list of strings - see main func for acceptable column entries
     def fetch_driver_telemetry_by_lap(self, race_name, driver_name, telemetry_column, lap_num):
         self.db.cursor.execute(f"SELECT tel_index FROM race_lap_data WHERE driver_id = '{driver_name}' AND race_name = '{race_name}' AND lap = '{lap_num}';")
