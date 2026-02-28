@@ -173,7 +173,7 @@ results_df['driver'] = driverName
 results_df['cluster_label'] = kmeans.labels_
 
 #determine filepath
-csv_filename = f"clustering/nick_clustering/{raceName}_{driverName}_{dataPoint}_clusters.csv"
+csv_filename = f"clustering/nick_clustering/{raceName}_{driverName}_{dataPoint}_cluster_results.csv"
 
 #index = False prevents pandas from adding an extra 'unnamed' column for the row numbers
 results_df.to_csv(csv_filename, index=False)
