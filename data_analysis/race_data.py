@@ -5,7 +5,7 @@ from query_db import TelemetryDatabase
 
 CACHE_FILE = 'cache/race_metadata_cache.json'
 
-# Load race schedule and driver lap counts from the JSON cache
+# Load race schedule and driver lap counts from the JSON cachea
 with open(CACHE_FILE) as f:
     _cache = json.load(f)
 
@@ -77,6 +77,7 @@ class RaceData:
                 df = self.db.fetch_driver_telemetry_by_lap(self.race_name, driver, TEL_COLUMNS, lap_num=lap)
                 df.set_index('rel_distance', inplace=True)
                 df['brake'] = df['brake'].astype(int)
+                df['drs'] = df['drs'].astype(int)
                 self.df_dict[driver].append(df)
 
     # Finds the global min/max for each column across all drivers and laps, used for normalization
