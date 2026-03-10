@@ -13,7 +13,7 @@ race_code_map = {"Belgian_Grand_Prix" : "BEL", "Chinese_Grand_Prix" : "CHN", "Hu
                  "Bahrain_Grand_Prix" : "BAH", "Italian_Grand_Prix" : "ITA", "Saudi_Arabian_Grand_Prix" : "SAU", "Azerbaijan_Grand_Prix" : "AZE", "Miami_Grand_Prix" : "MIA",
                  "Singapore_Grand_Prix" : "SIN", "Emilia_Romagna_Grand_Prix" : "EMI", "United_States_Grand_Prix" : "USA", "Monaco_Grand_Prix" : "MON", "Mexico_City_Grand_Prix" : "MEX",
                  "Spanish_Grand_Prix" : "ESP", "São_Paulo_Grand_Prix" : "SAO", "Las_Vegas_Grand_Prix" : "LAS", "Australian_Grand_Prix" : "AUS",
-                 "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU", "Austrian_Grand_Prix": "AUT"
+                 "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU", "Austrian_Grand_Prix": "AUT", "Canadian_Grand_Prix": "CAN"
                  }
 
 #given a race name, return a list of drivers
@@ -40,6 +40,8 @@ def process_tel_file(filepath, lap_num, driver_name):
 #given a race name (string), all telemetry files will be returned as a list of pandas dataframes
 def convert_race_to_dataframe_list(race_name, driver_name):
 
+    print(f"\nReading downloaded data for {driver_name} in {race_name}...")
+
     base_path = os.path.join('telemetry', race_name)
 
     #declare empty list to store pandas dataframes
@@ -50,7 +52,6 @@ def convert_race_to_dataframe_list(race_name, driver_name):
 
     #Loop through the files and place the DataFrames into a list
     for file in file_list:
-        print(f"Reading: {file}")
         lap_num = int(os.path.basename(file).split("_")[0])
         df = process_tel_file(file, lap_num, driver_name)
         df["driver_id"] = driver_name
@@ -68,16 +69,16 @@ def convert_race_to_dataframe_list(race_name, driver_name):
     return []
 
 def main():
-    #get list of all races on the schedule
-    schedule = fastf1.get_event_schedule(2025)['EventName']
-    
     year = 2025  # set this to whatever year your data is
 
+    #get list of all races on the schedule
+    schedule = fastf1.get_event_schedule(year)['EventName']
+    
     #fill raceNameList and replace spaces with underlines
     raceNameList = []
     for i in schedule:
         s = i.replace(" ", "_")
-        if s != "Canadian_Grand_Prix":
+        if s != "Pre-Season_Testing":
             raceNameList.append(s)
 
     # DB connection
@@ -85,19 +86,18 @@ def main():
     db.conn.autocommit = False
 
     VALID_COLUMNS = [
-        "time", "distance", "rel_distance",
+        "time", "distance", "drs", "rel_distance",
         "track_coordinate_x", "track_coordinate_y", "track_coordinate_z",
         "rpm", "gear", "throttle", "brake",
         "speed", "acc_x", "acc_y", "acc_z"
     ]
-
-    db.cursor.execute("SELECT COALESCE(MAX(lap_data_id), 0) + 1 FROM race_lap_data")
-    inserted_lap = db.cursor.fetchone()[0]
     
     #loop through all races for a certain season
     for raceName in raceNameList:
+        inserted_lap = 1 # reset lap counter for each race
 
         drivers = get_drivers_from_race(raceName)
+        race_code = race_code_map[raceName]
 
         if not drivers:
             print(f"Skipping: No data found for {raceName}")
@@ -105,6 +105,7 @@ def main():
 
         for driver in drivers:
             dataframe_list = convert_race_to_dataframe_list(raceName, driver)
+            print(f"Inserting read data for {driver} in {raceName}...")
 
             for df in dataframe_list:
                 # Saving these before filtering columns
@@ -117,6 +118,12 @@ def main():
                 # normalize brake
                 if "brake" in df.columns:
                     df["brake"] = df["brake"].astype(bool)
+
+                # normalize drs
+                if "drs" in df.columns:
+                    df["drs"] = df['drs'].astype(bool)
+                
+                # print(f"drs values: {df['drs']}")
 
                 # normalize gear (0-8 per DB check)
                 if "gear" in df.columns:
@@ -139,7 +146,7 @@ def main():
 
                 for record in records:
                     db.cursor.execute(
-                        f"INSERT INTO telemetry_data ({cols_str}) VALUES ({placeholders_str}) RETURNING tel_index",
+                        f"INSERT INTO telemetry_{race_code}_{year} ({cols_str}) VALUES ({placeholders_str}) RETURNING tel_index",
                         record
                     )
 
@@ -159,34 +166,32 @@ def main():
                         "lap_data_id": inserted_lap + i,
                         "driver_id": driver_id,
                         "lap": lap_num,
-                        "race_name": race_code_map[raceName],
-                        "year": year,
                         "tel_index": generated_indices[i]
                     }
 
                     lap_records.append(record)
 
                 db.cursor.executemany(
-                    "INSERT INTO race_lap_data (lap_data_id, driver_id, lap, race_name, year, tel_index) "
-                    "VALUES (%(lap_data_id)s, %(driver_id)s, %(lap)s, %(race_name)s, %(year)s, %(tel_index)s)",
+                    f"INSERT INTO metadata_{race_code}_{year} (lap_data_id, driver_id, lap, tel_index) "
+                    "VALUES (%(lap_data_id)s, %(driver_id)s, %(lap)s, %(tel_index)s)",
                     lap_records
                 )
 
                 db.conn.commit()
                 inserted_lap += n
-
-                print(f"{driver} lap {lap_num}: +{n} rows inserted")
                 
-        db.cursor.execute("SELECT COUNT(*) FROM telemetry_data")
+        db.cursor.execute(f"SELECT COUNT(*) FROM telemetry_{race_code}_{year}")
         actual_inserted_tel = db.cursor.fetchone()[0]
 
-        db.cursor.execute("SELECT COUNT(*) FROM race_lap_data")
+        db.cursor.execute(f"SELECT COUNT(*) FROM metadata_{race_code}_{year}")
         actual_inserted_lap = db.cursor.fetchone()[0]
             
         if actual_inserted_tel != actual_inserted_lap:
-            raise Exception(f"Final mismatch: inserted {actual_inserted_tel} telemetry rows vs {actual_inserted_lap} race_lap_data rows")
+            raise Exception(f"Final mismatch: inserted {actual_inserted_tel} telemetry rows vs {actual_inserted_lap} metadata rows")
+        else:
+            print(f"Finished processing {raceName}. Total inserted telemetry rows: {actual_inserted_tel}, total inserted metadata rows: {actual_inserted_lap}")
 
-    print(f"Done. Inserted {actual_inserted_tel} telemetry rows and {actual_inserted_lap} race_lap_data rows.")
+    print(f"Done. Inserted {actual_inserted_tel} telemetry rows and {actual_inserted_lap} metadata rows.")
     
 if __name__ == "__main__":
     main()
