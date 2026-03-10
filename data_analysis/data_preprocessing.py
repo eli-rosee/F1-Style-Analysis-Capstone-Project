@@ -1,242 +1,114 @@
-# from data_ingestion.query_db import query_db
-import os
-import pandas as pd  
+import json
 import numpy as np
-from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
-import fastf1
-import country_converter as coco
+import pandas as pd
+from query_db import TelemetryDatabase
 
-## Variable declaration. Can be done with fastf1, but this is far easier at the moment
-RACE_CODE_MAP = {}
+CACHE_FILE = 'cache/race_metadata_cache.json'
+
+# Load race schedule and driver lap counts from the JSON cache
+with open(CACHE_FILE) as f:
+    _cache = json.load(f)
+
+RACES = _cache['races']
+RACE_NAMES = list(RACES.keys())
+
+# Maps race name -> {driver: lap_count}
+DRIVER_LAPS = {}
+for race in RACE_NAMES:
+    DRIVER_LAPS[race] = RACES[race]['driver_laps']
+
+# Maps race name -> [driver codes]
+DRIVERS = {}
+for race in RACE_NAMES:
+    DRIVERS[race] = list(RACES[race]['driver_laps'].keys())
+
+# All columns fetched from the database
 TEL_COLUMNS = ['rel_distance', 'time', 'track_coordinate_x', 'track_coordinate_y', 'track_coordinate_z', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'speed', 'acc_x', 'acc_y', 'acc_z']
+
+# Default columns to normalize. Can be overridden by the user at init
 NORM_TEL_COLUMNS = ['rpm', 'gear', 'throttle', 'speed', 'acc_x', 'acc_y', 'acc_z']
-DF_DICT = {}
 
-datapoints_per_lap = 500
-# db = query_db()
-max_dict = {}
-min_dict = {}
+# Number of evenly spaced points each lap is interpolated to
+DATAPOINTS_PER_LAP = 500
 
-## This queries fastf1 to retrieve the race schedule for the specified year and fills the 
-## RACE_CODE_MAP with the race names and their corresponding country abbreviations. Takes a while to run.
-def get_race_schedule(year):
-    schedule = fastf1.get_event_schedule(year)[['Country', 'EventName']]
-    schedule = schedule[~schedule['EventName'].str.contains('Testing', case=False, na=False)]
 
-    for _, row in schedule.iterrows():
-        country_abbreviation = coco.convert(names=row['Country'], to='ISO3')
-        race_name = row['EventName'].replace(" ", "_")
-        RACE_CODE_MAP[race_name] = country_abbreviation
-    
-    print(RACE_CODE_MAP)
+class RaceData:
 
-## Function used for querying the database and storing the dataframes locally. EXTREMELY SLOW AT THE MOMENT
-def query_and_df_creation(race_name):
+    # Pass a race name to load, process, and normalize all telemetry for that race.
+    # Optionally pass norm_columns to normalize a custom set of columns.
+    def __init__(self, race_name, norm_columns=None):
+        self.race_name = race_name
+        self.drivers = DRIVERS[race_name]
+        self.driver_laps = DRIVER_LAPS[race_name]
+        self.db = TelemetryDatabase()
+        self.max_dict = {}
+        self.min_dict = {}
 
-    drivers = get_drivers_from_race(race_name)
+        self.norm_columns = NORM_TEL_COLUMNS
+        if norm_columns:
+            self.norm_columns = norm_columns
 
-    for driver in drivers:
-        for lap in range(1, lap_count + 1):
-            driver_df = db.fetch_driver_telemetry_by_lap('CAN', driver, telemetry_columns, lap_num=lap)
-            driver_df.set_index('rel_distance', inplace=True)
-            driver_df['brake'] = driver_df['brake'].astype(int)
+        # Raw laps per driver, indexed by rel_distance
+        self.df_dict = {}
+        for driver in self.drivers:
+            self.df_dict[driver] = []
 
-            canadian_gp_drivers_df_dict[driver].append(driver_df)
-            driver_df.to_pickle(f'pandas_df/{driver}{lap}')
+        # Interpolated and normalized laps per driver
+        self.interp_dict = {}
+        for driver in self.drivers:
+            self.interp_dict[driver] = []
 
-## Finds the maximum / minimum values of all metrics for normalization purposes. Looks at every driver, every lap
-def get_max_values():
-    for driver in canadian_gp_drivers_df_dict.keys():
+        self._load()
+        self._get_min_max()
+        self._reindex()
+        self._normalize()
 
-        for i in range(canadian_gp_driver_laps[driver]):
-            driver_df = canadian_gp_drivers_df_dict[driver][i]
-            
-            for column in normalized_telemetry_columns:
-                col_max = driver_df[column].max()
-                col_min = driver_df[column].min()
-                max_dict[column] = max(max_dict.get(column, -np.inf), col_max)
-                min_dict[column] = min(min_dict.get(column, np.inf), col_min)
+    # Returns normalized laps for a single driver, or all drivers if none specified
+    def get(self, driver=None):
+        if driver:
+            return self.interp_dict[driver]
+        return self.interp_dict
 
-## Repopulates the dataframes dict if they are stored locally
-def pickle_df_repop():
-    print("Repopulating dataframes from pickled files...")
-    for driver in canadian_gp_drivers:
-        for i in range(1, canadian_gp_driver_laps[driver] + 1):
-            temp_driver_df = pd.read_pickle(f'pandas_df/{driver}{i}')
-            canadian_gp_drivers_df_dict[driver].append(temp_driver_df)
+    # Fetches all laps for all drivers from the database and stores them in df_dict
+    def _load(self):
+        print(f"Loading data for {self.race_name}...")
+        for driver in self.drivers:
+            for lap in range(1, self.driver_laps[driver] + 1):
+                df = self.db.fetch_driver_telemetry_by_lap(self.race_name, driver, TEL_COLUMNS, lap_num=lap)
+                df.set_index('rel_distance', inplace=True)
+                df['brake'] = df['brake'].astype(int)
+                self.df_dict[driver].append(df)
 
-## Normalization of the data / interpolation is performed
-def reindex():
-    print("Reindexing and interpolating dataframes...")
+    # Finds the global min/max for each column across all drivers and laps, used for normalization
+    def _get_min_max(self):
+        for driver in self.drivers:
+            for df in self.df_dict[driver]:
+                for col in self.norm_columns:
+                    self.max_dict[col] = max(self.max_dict.get(col, -np.inf), df[col].max())
+                    self.min_dict[col] = min(self.min_dict.get(col, np.inf), df[col].min())
 
-    for driver in interpolated_laps_df_dict.keys():
-        for i in range(canadian_gp_driver_laps[driver]):
-            driver_df = canadian_gp_drivers_df_dict[driver][i]
+    # Interpolates each lap onto a uniform grid of DATAPOINTS_PER_LAP points between 0 and 1
+    def _reindex(self):
+        print("Reindexing...")
+        uniform_index = np.linspace(0, 1, DATAPOINTS_PER_LAP)
+        for driver in self.drivers:
+            for df in self.df_dict[driver]:
+                df = df[~df.index.duplicated(keep='first')]
+                df = df.reindex(df.index.union(uniform_index))
+                df = df.interpolate(method='index').ffill().bfill()
+                df = df.reindex(uniform_index)
+                df['gear'] = df['gear'].round().astype(int)
+                self.interp_dict[driver].append(df)
 
-            uniform_index = np.linspace(0, 1, datapoints_per_lap)
-            driver_df = canadian_gp_drivers_df_dict[driver][i]
+    # Applies min-max normalization to each column in norm_columns
+    def _normalize(self):
+        print("Normalizing...")
+        for driver in self.drivers:
+            for df in self.interp_dict[driver]:
+                for col in self.norm_columns:
+                    df[col] = (df[col] - self.min_dict[col]) / (self.max_dict[col] - self.min_dict[col])
 
-            driver_df = driver_df[~driver_df.index.duplicated(keep='first')]
 
-            # Combine original index with uniform grid
-            combined_index = driver_df.index.union(uniform_index)
-
-            # Reindex to combined index (inserts NaNs at new grid points)
-            driver_df = driver_df.reindex(combined_index)
-
-            # Interpolate to fill in the NaNs
-            driver_df = driver_df.interpolate(method='index')
-            driver_df = driver_df.ffill()
-            driver_df = driver_df.bfill()
-
-            # Reindex down to only the uniform grid points
-            driver_df = driver_df.reindex(uniform_index)
-
-            # Round gear to nearest integer
-            driver_df['gear'] = driver_df['gear'].round()
-            driver_df['gear'] = driver_df['gear'].astype(int)
-
-            interpolated_laps_df_dict[driver].append(driver_df)
-
-def normalize():
-    print("Normalizing dataframes...")
-    for driver in interpolated_laps_df_dict.keys():
-        for i in range(canadian_gp_driver_laps[driver]):
-            driver_df = interpolated_laps_df_dict[driver][i]
-
-            for column in normalized_telemetry_columns:
-                col_max = max_dict[column]
-                col_min = min_dict[column]
-                driver_df[column] = (driver_df[column] - col_min) / (col_max - col_min)
-
-def cluster():    
-    print("Clustering data...")
-    # Stack all laps from all drivers into one matrix
-    all_laps = []
-    for driver in interpolated_laps_df_dict.keys():
-        for lap_df in interpolated_laps_df_dict[driver]:
-            all_laps.append(lap_df[normalized_telemetry_columns].values.flatten())
-    
-    X = np.array(all_laps)  # shape: (total_laps, 500 * 7)
-    
-    # Fit KMeans
-    km = KMeans(n_clusters=4, random_state=42)
-    labels = km.fit_predict(X)
-    
-    return labels
-
-def attach_labels(labels):
-    print("Attaching cluster labels to dataframes...")
-    print(labels)
-    # This function will attach the cluster labels back to the original dataframes for analysis    
-    lap_index = 0
-    for driver in interpolated_laps_df_dict.keys():
-        for lap_df in interpolated_laps_df_dict[driver]:
-            lap_df['cluster_label'] = labels[lap_index]
-            lap_index += 1
-
-def elbow_plot():
-    print("Generating elbow plot...")
-    all_laps = []
-    for driver in interpolated_laps_df_dict.keys():
-        for lap_df in interpolated_laps_df_dict[driver]:
-            all_laps.append(lap_df[normalized_telemetry_columns].values.flatten())
-    
-    X = np.array(all_laps)
-    
-    wcss = []
-    for k in range(1, 11):
-        km = KMeans(n_clusters=k, random_state=42)
-        km.fit(X)
-        wcss.append(km.inertia_)
-    
-    plt.plot(range(1, 11), wcss, marker='o')
-    plt.title('Elbow Method For Optimal k')
-    plt.xlabel('Number of clusters (k)')
-    plt.ylabel('WCSS')
-    plt.savefig('elbow_plot.png')
-
-def visualize_clusters():
-    features = normalized_telemetry_columns
-    
-    # mean telemetry curve per cluster, per feature
-    cluster_data = {}
-    for driver in interpolated_laps_df_dict.keys():
-        for lap_df in interpolated_laps_df_dict[driver]:
-            label = lap_df['cluster_label'].iloc[0]
-            if label not in cluster_data:
-                cluster_data[label] = []
-            cluster_data[label].append(lap_df[features].values)
-    
-    fig, axes = plt.subplots(len(features), 1, figsize=(12, 20))
-    for i, feature in enumerate(features):
-        for label, laps in cluster_data.items():
-            mean_curve = np.mean([lap[:, i] for lap in laps], axis=0)
-            axes[i].plot(mean_curve, label=f'Cluster {label}')
-        axes[i].set_title(feature)
-        axes[i].legend()
-    
-    plt.tight_layout()
-    plt.savefig('cluster_visualization.png')
-
-def cluster_statistics():
-    print("\n========== CLUSTER STATISTICS ==========")
-    
-    # Build a flat list of (driver, lap_num, cluster_label)
-    lap_records = []
-    for driver in interpolated_laps_df_dict.keys():
-        for lap_num, lap_df in enumerate(interpolated_laps_df_dict[driver]):
-            label = lap_df['cluster_label'].iloc[0]
-            lap_records.append({'driver': driver, 'lap': lap_num + 1, 'cluster': label})
-    
-    records_df = pd.DataFrame(lap_records)
-
-    # Per cluster: count + mean telemetry stats
-    for cluster_id in sorted(records_df['cluster'].unique()):
-        cluster_laps = [
-            interpolated_laps_df_dict[row['driver']][row['lap'] - 1]
-            for _, row in records_df[records_df['cluster'] == cluster_id].iterrows()
-        ]
-        
-        count = len(cluster_laps)
-        total = len(records_df)
-        all_data = pd.concat(cluster_laps)[normalized_telemetry_columns]
-        
-        print(f"\n--- Cluster {cluster_id} ---")
-        print(f"  Lap count : {count} ({100 * count / total:.1f}% of all laps)")
-        print(f"  Mean telemetry:")
-        for col in normalized_telemetry_columns:
-            print(f"    {col:<22} mean={all_data[col].mean():.3f}  std={all_data[col].std():.3f}")
-
-    # Per driver: % of laps in each cluster
-    print("\n========== DRIVER CLUSTER BREAKDOWN ==========")
-    cluster_ids = sorted(records_df['cluster'].unique())
-    header = f"{'DRIVER':<8}" + "".join(f"  C{c}%" for c in cluster_ids)
-    print(header)
-    
-    for driver in canadian_gp_drivers:
-        driver_laps = records_df[records_df['driver'] == driver]
-        total = len(driver_laps)
-        row = f"{driver:<8} ({total} laps)"
-        for c in cluster_ids:
-            pct = 100 * len(driver_laps[driver_laps['cluster'] == c]) / total
-            row += f"  {pct:>4.1f}"
-        print(row)
-
-def main():
-
-    get_race_schedule(2025)
-    # query_and_df_creation()
-    # pickle_df_repop()
-    # get_max_values()
-    # reindex()
-    # normalize()
-    # labels = cluster()
-    # attach_labels(labels)
-    # # elbow_plot()
-    # visualize_clusters()
-    # cluster_statistics()
-
-if __name__=="__main__":
-    main()
+if __name__ == '__main__':
+    race = RaceData('Canadian_Grand_Prix')
+    print(race.get('VER'))
