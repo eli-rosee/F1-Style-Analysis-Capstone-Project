@@ -1,7 +1,7 @@
 import json
 import psycopg2
 
-CACHE_FILE = 'f1_cache.json'
+CACHE_FILE = 'race_metadata_cache.json'
 
 conn = psycopg2.connect(host="localhost", database="postgres", user="postgres", password="Team6")
 cursor = conn.cursor()

@@ -29,15 +29,11 @@ class TelemetryDatabase:
     def fetch_driver_telemetry_by_lap(self, race_name, driver, columns, lap_num):
         tel_table = TEL_TABLE[race_name]
         meta_table = META_TABLE[race_name]
-
-        # First get all tel_index values for this driver and lap from the metadata table
-        self.cursor.execute(f"SELECT tel_index FROM {meta_table} WHERE driver_id = %s AND lap = %s", (driver, lap_num))
-        tel_indices = []
-        for row in self.cursor.fetchall():
-            tel_indices.append(row[0])
-
-        # Then fetch the telemetry rows for those indices
         col_str = ', '.join(columns)
-        self.cursor.execute(f"SELECT {col_str} FROM {tel_table} WHERE tel_index = ANY(%s) ORDER BY rel_distance", (tel_indices,))
+
+        self.cursor.execute(
+            f"SELECT {col_str} FROM {tel_table} WHERE tel_index IN (SELECT tel_index FROM {meta_table} WHERE driver_id = %s AND lap = %s) ORDER BY rel_distance",
+            (driver, lap_num)
+        )
         rows = self.cursor.fetchall()
         return pd.DataFrame(rows, columns=columns)

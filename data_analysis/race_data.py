@@ -73,6 +73,7 @@ class RaceData:
     def _load(self):
         print(f"Loading data for {self.race_name}...")
         for driver in self.drivers:
+            print(f"  Loading {driver}...")
             for lap in range(1, self.driver_laps[driver] + 1):
                 df = self.db.fetch_driver_telemetry_by_lap(self.race_name, driver, TEL_COLUMNS, lap_num=lap)
                 df.set_index('rel_distance', inplace=True)
@@ -88,17 +89,31 @@ class RaceData:
                     self.max_dict[col] = max(self.max_dict.get(col, -np.inf), df[col].max())
                     self.min_dict[col] = min(self.min_dict.get(col, np.inf), df[col].min())
 
+    def _reindex_df_operations(self, df):
+        uniform_index = np.linspace(0, 1, DATAPOINTS_PER_LAP)
+        df = df[~df.index.duplicated(keep='first')]
+        df = df.reindex(df.index.union(uniform_index))
+        df = df.infer_objects(copy=False)
+        df = df.interpolate(method='index')
+        df = df.ffill()
+        df = df.bfill()
+        df = df.reindex(np.linspace(0, 1, DATAPOINTS_PER_LAP))
+
+        return df
+
     # Interpolates each lap onto a uniform grid of DATAPOINTS_PER_LAP points between 0 and 1
     def _reindex(self):
         print("Reindexing...")
         uniform_index = np.linspace(0, 1, DATAPOINTS_PER_LAP)
         for driver in self.drivers:
-            for df in self.df_dict[driver]:
-                df = df[~df.index.duplicated(keep='first')]
-                df = df.reindex(df.index.union(uniform_index))
-                df = df.interpolate(method='index').ffill().bfill()
-                df = df.reindex(uniform_index)
-                df['gear'] = df['gear'].round().astype(int)
+            for lap_num, df in enumerate(self.df_dict[driver], start=1):
+                df = self._reindex_df_operations(df)
+
+                if df.isna().sum().sum() > 50:
+                    print(f"  Dropping {driver} lap {lap_num} — too many NaN values")
+                    continue
+
+                df['gear'] = df['gear'].fillna(0).round().astype(int)
                 self.interp_dict[driver].append(df)
 
     # Applies min-max normalization to each column in norm_columns
@@ -112,4 +127,4 @@ class RaceData:
 
 if __name__ == '__main__':
     race = RaceData('Canadian_Grand_Prix')
-    print(race.get('VER'))
+    # print(race.get('VER'))
