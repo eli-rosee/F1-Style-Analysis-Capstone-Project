@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.cluster import KMeans
-import data_preprocessing as dp
+from race_data import RaceData
 
 def cluster(interpolated_df_dict, drivers, norm_tel_columns):
     print("Clustering data...")
@@ -114,14 +114,16 @@ def cluster_statistics(interpolated_df_dict, drivers, norm_tel_columns):
 
 def main():
     race_name = 'Canadian_Grand_Prix'
-    drivers = dp.DRIVERS[race_name]
-    interp = dp.INTERPOLATED_DF_DICT[race_name]
+    race = RaceData(race_name)
 
-    labels = cluster(interp, drivers, dp.NORM_TEL_COLUMNS)
+    drivers = race.drivers
+    interp = race.interp_dict
+
+    labels = cluster(interp, drivers, race.norm_columns)
     attach_labels(interp, drivers, labels)
-    # elbow_plot(interp, drivers, dp.NORM_TEL_COLUMNS)
-    visualize_clusters(interp, drivers, dp.NORM_TEL_COLUMNS)
-    cluster_statistics(interp, drivers, dp.NORM_TEL_COLUMNS)
+    # elbow_plot(interp, drivers, race.norm_columns)
+    visualize_clusters(interp, drivers, race.norm_columns)
+    cluster_statistics(interp, drivers, race.norm_columns)
 
 if __name__ == '__main__':
     main()

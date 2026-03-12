@@ -109,7 +109,7 @@ class RaceData:
             for lap_num, df in enumerate(self.df_dict[driver], start=1):
                 df = self._reindex_df_operations(df)
 
-                if df.isna().sum().sum() > 50:
+                if df.isna().sum().sum() > 1:
                     print(f"  Dropping {driver} lap {lap_num} — too many NaN values")
                     continue
 
