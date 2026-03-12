@@ -2,6 +2,7 @@ import json
 import numpy as np
 import pandas as pd
 from query_db import TelemetryDatabase
+from sklearn.decomposition import PCA
 
 CACHE_FILE = 'cache/race_metadata_cache.json'
 
@@ -124,7 +125,41 @@ class RaceData:
                 for col in self.norm_columns:
                     df[col] = (df[col] - self.min_dict[col]) / (self.max_dict[col] - self.min_dict[col])
 
+    def pca(self, n_components=0.95):
+        all_points = []
+
+        for driver in self.drivers:
+            for lap_df in self.interp_dict[driver]:
+                all_points.append(lap_df[self.norm_columns].values)
+
+        X = np.vstack(all_points)
+        print(f"\nInput shape: {X.shape}")
+
+        pca = PCA(n_components=n_components, random_state=42)
+        pca.fit(X)
+
+        print(f"Components kept: {pca.n_components_}")
+        print(f"Variance explained: {pca.explained_variance_ratio_.sum()*100:.1f}%")
+        print(f"Per-component variance: {np.round(pca.explained_variance_ratio_, 3)}")
+        print("Feature loadings (components x features):")
+        for i, component in enumerate(pca.components_):
+            print(f"\n  PC{i+1}:")
+            for col, loading in zip(self.norm_columns, component):
+                bar = '█' * int(abs(loading) * 20)
+                sign = '+' if loading >= 0 else '-'
+                print(f"    {col:<12} {sign}{abs(loading):.3f}  {bar}")
+        reduced_dict = {}
+        for driver in self.drivers:
+            reduced_dict[driver] = []
+            for lap_df in self.interp_dict[driver]:
+                X_lap = lap_df[self.norm_columns].values
+                X_reduced = pca.transform(X_lap)
+                reduced_dict[driver].append(X_reduced)
+
+        return pca, reduced_dict
+
 
 if __name__ == '__main__':
     race = RaceData('Canadian_Grand_Prix')
-    # print(race.get('VER'))
+
+    pca, X_reduced = race.pca()
