@@ -44,6 +44,8 @@ class RaceData:
         self.db = TelemetryDatabase()
         self.max_dict = {}
         self.min_dict = {}
+        self.old_max_dict = {}
+        self.old_min_dict = {}
 
         self.norm_columns = NORM_TEL_COLUMNS
         if norm_columns:
@@ -82,13 +84,31 @@ class RaceData:
                 df['drs'] = df['drs'].astype(int)
                 self.df_dict[driver].append(df)
 
+    # CHUNKS OF 5 TO 10, 0-5, 0-10
     # Finds the global min/max for each column across all drivers and laps, used for normalization
     def _get_min_max(self):
         for driver in self.drivers:
             for df in self.df_dict[driver]:
                 for col in self.norm_columns:
-                    self.max_dict[col] = max(self.max_dict.get(col, -np.inf), df[col].max())
-                    self.min_dict[col] = min(self.min_dict.get(col, np.inf), df[col].min())
+                    if df[col].count() == 0:
+                        continue
+                    self.max_dict[col] = max(self.max_dict.get(col, -np.inf), np.percentile(df[col], 98))
+                    self.min_dict[col] = min(self.min_dict.get(col, np.inf), np.percentile(df[col], 2))
+
+    def _get_min_max_driver_lap(self, driver, laps_max):
+        min_dict, max_dict = {}, {}
+
+        if(len(self.df_dict[driver]) < laps_max):
+            laps_max = len(self.df_dict[driver])
+
+        for df in self.df_dict[driver][:laps_max]:
+            for col in self.norm_columns:
+                if df[col].count() == 0:
+                    continue
+                max_dict[col] = max(max_dict.get(col, -np.inf), np.percentile(df[col], 98))
+                min_dict[col] = min(min_dict.get(col, np.inf), np.percentile(df[col], 2))
+        
+        return min_dict, max_dict
 
     def _reindex_df_operations(self, df):
         uniform_index = np.linspace(0, 1, DATAPOINTS_PER_LAP)
@@ -105,7 +125,6 @@ class RaceData:
     # Interpolates each lap onto a uniform grid of DATAPOINTS_PER_LAP points between 0 and 1
     def _reindex(self):
         print("Reindexing...")
-        uniform_index = np.linspace(0, 1, DATAPOINTS_PER_LAP)
         for driver in self.drivers:
             for lap_num, df in enumerate(self.df_dict[driver], start=1):
                 df = self._reindex_df_operations(df)
@@ -121,9 +140,19 @@ class RaceData:
     def _normalize(self):
         print("Normalizing...")
         for driver in self.drivers:
-            for df in self.interp_dict[driver]:
+            print(f"  Normalizing {driver}...")
+            prev_lap_increment = 0
+            min_dict, max_dict = {}, {}
+            for lap_num, df in enumerate(self.interp_dict[driver], start=1):
+                lap_increment = lap_num + (5 - lap_num % 5)
+
+                if lap_increment != prev_lap_increment:
+                    min_dict, max_dict = self._get_min_max_driver_lap(driver, lap_increment)
+                    prev_lap_increment = lap_increment
+
                 for col in self.norm_columns:
-                    df[col] = (df[col] - self.min_dict[col]) / (self.max_dict[col] - self.min_dict[col])
+                    df[col] = (df[col] - min_dict[col]) / (max_dict[col] - min_dict[col])
+                    np.clip(df[col], 0, 1)
 
     def pca(self, n_components=0.95):
         all_points = []
