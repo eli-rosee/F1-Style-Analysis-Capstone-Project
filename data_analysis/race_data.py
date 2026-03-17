@@ -44,8 +44,6 @@ class RaceData:
         self.db = TelemetryDatabase()
         self.max_dict = {}
         self.min_dict = {}
-        self.old_max_dict = {}
-        self.old_min_dict = {}
 
         self.norm_columns = NORM_TEL_COLUMNS
         if norm_columns:
@@ -60,11 +58,18 @@ class RaceData:
         self.interp_dict = {}
         for driver in self.drivers:
             self.interp_dict[driver] = []
+        
+        # PCA transformation applied to normalized laps per driver
+        self.reduced_dict = {}
+        for driver in self.drivers:
+            self.reduced_dict[driver] = []
 
         self._load()
         self._get_min_max()
         self._reindex()
         self._normalize()
+        self._average_speed_check()
+        self.pca()
 
     # Returns normalized laps for a single driver, or all drivers if none specified
     def get(self, driver=None):
@@ -95,13 +100,14 @@ class RaceData:
                     self.max_dict[col] = max(self.max_dict.get(col, -np.inf), np.percentile(df[col], 98))
                     self.min_dict[col] = min(self.min_dict.get(col, np.inf), np.percentile(df[col], 2))
 
-    def _get_min_max_driver_lap(self, driver, laps_max):
+    def _get_min_max_driver_lap(self, driver, laps_min, laps_max):
         min_dict, max_dict = {}, {}
 
         if(len(self.df_dict[driver]) < laps_max):
             laps_max = len(self.df_dict[driver])
+            laps_min = laps_max - 5
 
-        for df in self.df_dict[driver][:laps_max]:
+        for df in self.df_dict[driver][laps_min:laps_max]:
             for col in self.norm_columns:
                 if df[col].count() == 0:
                     continue
@@ -130,7 +136,7 @@ class RaceData:
                 df = self._reindex_df_operations(df)
 
                 if df.isna().sum().sum() > 1:
-                    print(f"  Dropping {driver} lap {lap_num} — too many NaN values")
+                    print(f"  Dropping {driver} lap {lap_num} — NaN values detected")
                     continue
 
                 df['gear'] = df['gear'].fillna(0).round().astype(int)
@@ -147,12 +153,30 @@ class RaceData:
                 lap_increment = lap_num + (5 - lap_num % 5)
 
                 if lap_increment != prev_lap_increment:
-                    min_dict, max_dict = self._get_min_max_driver_lap(driver, lap_increment)
+                    min_dict, max_dict = self._get_min_max_driver_lap(driver, lap_increment - 5, lap_increment)
                     prev_lap_increment = lap_increment
-
+                
                 for col in self.norm_columns:
                     df[col] = (df[col] - min_dict[col]) / (max_dict[col] - min_dict[col])
                     np.clip(df[col], 0, 1)
+
+    def _average_speed_check(self):
+        print("Checking speed thresholds...")
+
+        for driver in self.drivers:
+            filtered_laps = []
+
+            for lap_num, df in enumerate(self.interp_dict[driver], start=1):
+                avg_speed = np.mean(df['speed'])
+
+                ## These arbitrary lap nums saw the highest proportion of slow laps among drivers
+                ## Safer to remove them for all drivers to not skew clusters
+                if(avg_speed <= 0.6 or lap_num == 1 or lap_num >= 66):
+                    print(f"  Dropping {driver} lap {lap_num} — too slow or filtered out lap number (1, 66+)")
+                else:
+                    filtered_laps.append(df)
+            
+            self.interp_dict[driver] = filtered_laps
 
     def pca(self, n_components=0.95):
         all_points = []
@@ -162,31 +186,19 @@ class RaceData:
                 all_points.append(lap_df[self.norm_columns].values)
 
         X = np.vstack(all_points)
-        print(f"\nInput shape: {X.shape}")
 
         pca = PCA(n_components=n_components, random_state=42)
         pca.fit(X)
 
-        print(f"Components kept: {pca.n_components_}")
-        print(f"Variance explained: {pca.explained_variance_ratio_.sum()*100:.1f}%")
-        print(f"Per-component variance: {np.round(pca.explained_variance_ratio_, 3)}")
-        print("Feature loadings (components x features):")
-        for i, component in enumerate(pca.components_):
-            print(f"\n  PC{i+1}:")
-            for col, loading in zip(self.norm_columns, component):
-                bar = '█' * int(abs(loading) * 20)
-                sign = '+' if loading >= 0 else '-'
-                print(f"    {col:<12} {sign}{abs(loading):.3f}  {bar}")
-        reduced_dict = {}
+        print("\nApplying PCA...")
+        print(f"  Components created: {pca.n_components_}")
+        print(f"  Variance explained: {pca.explained_variance_ratio_.sum()*100:.1f}%")
+
         for driver in self.drivers:
-            reduced_dict[driver] = []
             for lap_df in self.interp_dict[driver]:
                 X_lap = lap_df[self.norm_columns].values
                 X_reduced = pca.transform(X_lap)
-                reduced_dict[driver].append(X_reduced)
-
-        return pca, reduced_dict
-
+                self.reduced_dict[driver].append(X_reduced)
 
 if __name__ == '__main__':
     race = RaceData('Canadian_Grand_Prix')
