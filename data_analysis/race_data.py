@@ -4,26 +4,31 @@ import pandas as pd
 from query_db import TelemetryDatabase
 from sklearn.decomposition import PCA
 
+# Have to run build_metadata_cache.py
 CACHE_FILE = 'cache/race_metadata_cache.json'
 
-# Load race schedule and driver lap counts from the JSON cachea
+# Load race schedule and driver lap counts from the JSON cache
+# Cache information stored in _cache variable
 with open(CACHE_FILE) as f:
     _cache = json.load(f)
 
+# Extracts the valuable race metadata from _cache
 RACES = _cache['races']
+
+# Retrieves the list of the racenames in the 2025 F1 Season (e.g., ['Australian_Grand_Prix', 'Chinese_Grand_Prix', ...])
 RACE_NAMES = list(RACES.keys())
 
-# Maps race name -> {driver: lap_count}
+# DRIVER_LAPS['Australian_Grand_Prix']['HAM'] = Lewis Hamiltons laps raced in the Australian Grand Prix
 DRIVER_LAPS = {}
 for race in RACE_NAMES:
     DRIVER_LAPS[race] = RACES[race]['driver_laps']
 
-# Maps race name -> [driver codes]
+# DRIVERS['Australian_Grand_Prix'] returns the list of drivers that raced in the Australian_Grand_Prix
 DRIVERS = {}
 for race in RACE_NAMES:
     DRIVERS[race] = list(RACES[race]['driver_laps'].keys())
 
-# All columns fetched from the database
+# All columns that can be fetched from the database
 TEL_COLUMNS = ['rel_distance', 'time', 'track_coordinate_x', 'track_coordinate_y', 'track_coordinate_z', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'speed', 'acc_x', 'acc_y', 'acc_z']
 
 # Default columns to normalize. Can be overridden by the user at init
@@ -41,34 +46,50 @@ class RaceData:
         self.race_name = race_name
         self.drivers = DRIVERS[race_name]
         self.driver_laps = DRIVER_LAPS[race_name]
+
+        # Initializes postgresdb connection (see query_db.py)
         self.db = TelemetryDatabase()
         self.max_dict = {}
         self.min_dict = {}
 
+        # Checks to see if the user passed a list of columns they want normalized. If not, use default
         self.norm_columns = NORM_TEL_COLUMNS
         if norm_columns:
             self.norm_columns = norm_columns
 
-        # Raw laps per driver, indexed by rel_distance
+        # Stores the raw telemetry from the database, stored in order of laps. 
+        # e.g., df_dict['HAM'] retrieves all telemetry dataframes in a list for laps 1, 2, 3, ...
         self.df_dict = {}
         for driver in self.drivers:
             self.df_dict[driver] = []
 
-        # Interpolated and normalized laps per driver
+        # Stores the interpolated telemetry, after it has been translated to a grid for euclidean distance comparison (see _reindex_df_operations)
         self.interp_dict = {}
         for driver in self.drivers:
             self.interp_dict[driver] = []
         
-        # PCA transformation applied to normalized laps per driver
+        # Stores the telemetry dataframes AFTER PCA transformation has been applied to it
         self.reduced_dict = {}
         for driver in self.drivers:
             self.reduced_dict[driver] = []
 
+        # Loads the data from the database, stores it in the df_dict, in order of lap
         self._load()
+
+        # Gets the GLOBAL min max (depreciated, we now use local min maxes through _get_min_max)
         self._get_min_max()
+
+        # Reindexes all the telemetry onto a grid of DATAPOINTS_PER_LAP values
+        # e.g., if DATAPOINTS_PER_LAP = 500, the index will be interpolated to 500 evenly spaced points by relative distance
         self._reindex()
+
+        # Normalizes the telemetry to a 0-1 scale. This is done with _get_min_max_driver_lap integrated into it.
         self._normalize()
+
+        # Checks for laps that are too slow, and drops them from the dict.
         self._average_speed_check()
+
+        # Applies PCA algorithm to the interpolated and normalized DFs
         self.pca()
 
     # Returns normalized laps for a single driver, or all drivers if none specified
