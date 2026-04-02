@@ -252,7 +252,7 @@ def main():
     
     #change variables to cluster on here
     #remember to set PCA to false if you are only clustering on one variable
-    clusterVariables = ["rpm", "speed"]
+    clusterVariables = ["rpm", "speed", "throttle", "brake", "gear", "acc_x", "acc_y", "acc_z"]
 
     #create RaceData object with the defined columns
     race = RaceData(race_name, clusterVariables)
@@ -267,7 +267,7 @@ def main():
 
     #create kmeans cluster
     #change number of clusters depending on the variable 
-    labels, sil, dbi, cah = k_means_cluster(data_dict, drivers, cluster_num=3)
+    labels, sil, dbi, cah = k_means_cluster(data_dict, drivers, cluster_num=5)
 
     attach_labels(race.interp_dict, drivers, labels)
 
