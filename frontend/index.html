@@ -305,7 +305,6 @@
 				<select id="track-select" class="track-dropdown">
 					<option value="default">Select a track</option>
 					<hr>
-					<option value="canada">Montreal, Canada - Circuit Gilles Villeneuve</option>
 					<option value="australia">Melbourne, Australia - Albert Park Circuit</option>
 					<option value="china">Shanghai, China - Shanghai International Circuit</option>
 					<option value="japan">Suzuka, Japan - Suzuka Circuit</option>
@@ -315,6 +314,7 @@
 					<option value="italy_imola">Imola, Italy - Autodromo Enzo e Dino Ferrari</option>
 					<option value="monaco">Monaco, Monaco - Circuit de Monaco</option>
 					<option value="spain">Barcelona, Spain - Circuit de Barcelona-Catalunya</option>
+					<option value="canada">Montreal, Canada - Circuit Gilles Villeneuve</option>
 					<option value="austria">Spielberg, Austria - Red Bull Ring</option>
 					<option value="uk">Silverstone, United Kingdom - Silverstone Circuit</option>
 					<option value="belgium">Spa, Belgium - Circuit de Spa-Francorchamps</option>
@@ -411,6 +411,7 @@
 					];
 					
 					for (let i = 0; i < 6; i++) {
+						// We create a wrapper for the pie charts so we can do more sylization, and then put it in the charts row.
 						const pieWrapper = document.createElement('div');
 						pieWrapper.style.cssText = 'width: 200px; height: 200px; flex-shrink: 0;';
 						chartsRow.appendChild(pieWrapper);
@@ -461,7 +462,7 @@
 					}
 
 
-          				// Create canvas for radar chart
+          				// Create wrapper for the canvas and then put the radar chart into that canvas
 	  				const radarWrapper = document.createElement('div');
 					radarWrapper.style.cssText = 'width: 260px; height: 260px; flex-shrink: 0;';
 					chartsRow.appendChild(radarWrapper);
@@ -523,11 +524,12 @@
 			});
 		});
 
+		// Map Visualization portion
+
 		const trackSelect = document.getElementById('track-select');
     		const panels = document.querySelectorAll('.panel');
 
 		const trackData = {
-			canada:       { lat: 45.5051,  lng: -73.5220,  name: "Circuit Gilles Villeneuve",    code: 'ca-1978' },
 			australia:    { lat: -37.8497, lng: 144.9680,  name: "Albert Park Circuit",           code: 'au-1953' },
 			china:        { lat: 31.3389,  lng: 121.2198,  name: "Shanghai International Circuit", code: 'cn-2004' },
 			japan:        { lat: 34.8431,  lng: 136.5407,  name: "Suzuka Circuit",                code: 'jp-1962' },
@@ -537,6 +539,7 @@
 			italy_imola:  { lat: 44.3439,  lng: 11.7167,   name: "Autodromo Enzo e Dino Ferrari", code: 'it-1953' },
 			monaco:       { lat: 43.7347,  lng: 7.4205,    name: "Circuit de Monaco",             code: 'mc-1929' },
 			spain:        { lat: 41.5700,  lng: 2.2611,    name: "Circuit de Barcelona-Catalunya", code: 'es-1991' },
+			canada:       { lat: 45.5051,  lng: -73.5220,  name: "Circuit Gilles Villeneuve",    code: 'ca-1978' },
 			austria:      { lat: 47.2197,  lng: 14.7647,   name: "Red Bull Ring",                 code: 'at-1969' },
 			uk:           { lat: 52.0786,  lng: -1.0169,   name: "Silverstone Circuit",           code: 'gb-1948' },
 			belgium:      { lat: 50.4372,  lng: 5.9714,    name: "Circuit de Spa-Francorchamps",  code: 'be-1925' },
@@ -558,6 +561,7 @@
 		let trackLine = null;
 
 		async function loadTrack(track) {
+			// First we find where the track is in the world
 			const mapContainer = document.getElementById('map-container');
 			const placeholder = document.getElementById('map-placeholder');
 
@@ -583,7 +587,8 @@
 				trackLine.remove();
 				trackLine = null;
 			}
-
+			
+			// Then we load the outline of the track from the bacinger/f1-circuits repository, which has everything in .geojson format
 			try {
 				const url = `https://raw.githubusercontent.com/bacinger/f1-circuits/master/circuits/${track.code}.geojson`;
 				const response = await fetch(url);
@@ -607,10 +612,14 @@
 			const raceIndex = e.target.selectedIndex;
                 	let activeRoster = {...startRoster};
 
+			/* From round 3 (Japan, index 3) onwards:
+           		Tsunoda moves to Red Bull, Lawson to Racing Bulls */
 			if (raceIndex >= 3) {
                         	activeRoster["Red Bull Racing"] = ["Verstappen", "Tsunoda"];
                         	activeRoster["Racing Bulls"] = ["Lawson", "Hadjar"];
                 	}
+			/* From round 7 (Imola, index 7) onwards:
+           		Colapinto replaces Doohan at Alpine */
 			if (raceIndex >= 7) {
                         	activeRoster["Alpine"] = ["Gasly", "Colapinto"];
                 	}
