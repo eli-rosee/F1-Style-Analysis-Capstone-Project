@@ -57,7 +57,7 @@ class RaceData:
         if norm_columns:
             self.norm_columns = norm_columns
 
-        # Stores the raw telemetry from the database, stored in order of laps. 
+        # Stores the raw telemetry from the database, stored in order of laps.
         # e.g., df_dict['HAM'] retrieves all telemetry dataframes in a list for laps 1, 2, 3, ...
         self.df_dict = {}
         for driver in self.drivers:
@@ -67,7 +67,7 @@ class RaceData:
         self.interp_dict = {}
         for driver in self.drivers:
             self.interp_dict[driver] = []
-        
+
         # Stores the telemetry dataframes AFTER PCA transformation has been applied to it
         self.reduced_dict = {}
         for driver in self.drivers:
@@ -132,9 +132,9 @@ class RaceData:
             for col in self.norm_columns:
                 if df[col].count() == 0:
                     continue
-                max_dict[col] = max(max_dict.get(col, -np.inf), np.percentile(df[col], 98))
-                min_dict[col] = min(min_dict.get(col, np.inf), np.percentile(df[col], 2))
-        
+                max_dict[col] = max(max_dict.get(col, -np.inf), np.nanpercentile(df[col], 98))
+                min_dict[col] = min(min_dict.get(col, np.inf), np.nanpercentile(df[col], 2))
+
         return min_dict, max_dict
 
     def _reindex_df_operations(self, df):
@@ -156,7 +156,7 @@ class RaceData:
             for lap_num, df in enumerate(self.df_dict[driver], start=1):
                 df = self._reindex_df_operations(df)
 
-                if df.isna().sum().sum() > 1:
+                if df.isna().sum().sum() > 0:
                     print(f"  Dropping {driver} lap {lap_num} — NaN values detected")
                     continue
 
@@ -176,9 +176,13 @@ class RaceData:
                 if lap_increment != prev_lap_increment:
                     min_dict, max_dict = self._get_min_max_driver_lap(driver, lap_increment - 5, lap_increment)
                     prev_lap_increment = lap_increment
-                
+
                 for col in self.norm_columns:
-                    df[col] = (df[col] - min_dict[col]) / (max_dict[col] - min_dict[col])
+                    denom = max_dict[col] - min_dict[col]
+                    if denom == 0 or np.isnan(denom):
+                        df[col] = 0
+                    else:
+                        df[col] = (df[col] - min_dict[col]) / denom
                     df[col] = np.clip(df[col], 0, 1)
 
     def _average_speed_check(self, iqr_multiplier=1.5):
