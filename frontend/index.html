@@ -331,14 +331,19 @@
 					<option value="abudhabi">Abu Dhabi, UAE - Yas Marina Circuit</option>
 				</select>
 			</div>
-			<div id="map-display" style="margin-top: 15px; height: 200px; background: #18181c; border-radius: 8px; border: 1px solid #2a2a2e; display: flex; align-items: center; justify-content: center; color: #333340; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
-			Select a track to view telemetry map
+			<div id="map-display" style="margin-top: 15px; height: 450px; border-radius: 8px; border: 1px solid #2a2a2e; overflow: hidden;">
+				<div id="map-container" style="width: 100%; height: 100%;"></div>
+        			<div id="map-placeholder" style="width: 100%; height: 100%; background: #18181c; display: flex; align-items: center; justify-content: center; color: #333340; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+                			Select a track to view map
+        			</div>
 			</div>
 		</div>
 	</div>
 
-	<!--Chart.js Import-->
+	<!--Chart.js and Leaflet.js Import-->
 	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+	<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   	<!-- ----------------- JS for Multi-Driver Selection ----------------- -->
   	<script>
@@ -519,63 +524,124 @@
 		});
 
 		const trackSelect = document.getElementById('track-select');
-    		const mapDisplay = document.getElementById('map-display');
     		const panels = document.querySelectorAll('.panel');
-    		const mapPanel = panels[panels.length - 1];
 
-    		trackSelect.addEventListener('change', (e) => {
-    			
+		const trackData = {
+			canada:       { lat: 45.5051,  lng: -73.5220,  name: "Circuit Gilles Villeneuve",    code: 'ca-1978' },
+			australia:    { lat: -37.8497, lng: 144.9680,  name: "Albert Park Circuit",           code: 'au-1953' },
+			china:        { lat: 31.3389,  lng: 121.2198,  name: "Shanghai International Circuit", code: 'cn-2004' },
+			japan:        { lat: 34.8431,  lng: 136.5407,  name: "Suzuka Circuit",                code: 'jp-1962' },
+			bahrain:      { lat: 26.0325,  lng: 50.5106,   name: "Bahrain International Circuit", code: 'bh-2002' },
+			saudi:        { lat: 21.6319,  lng: 39.1044,   name: "Jeddah Corniche Circuit",       code: 'sa-2021' },
+			usa_miami:    { lat: 25.9581,  lng: -80.2389,  name: "Miami International Autodrome", code: 'us-2022' },
+			italy_imola:  { lat: 44.3439,  lng: 11.7167,   name: "Autodromo Enzo e Dino Ferrari", code: 'it-1953' },
+			monaco:       { lat: 43.7347,  lng: 7.4205,    name: "Circuit de Monaco",             code: 'mc-1929' },
+			spain:        { lat: 41.5700,  lng: 2.2611,    name: "Circuit de Barcelona-Catalunya", code: 'es-1991' },
+			austria:      { lat: 47.2197,  lng: 14.7647,   name: "Red Bull Ring",                 code: 'at-1969' },
+			uk:           { lat: 52.0786,  lng: -1.0169,   name: "Silverstone Circuit",           code: 'gb-1948' },
+			belgium:      { lat: 50.4372,  lng: 5.9714,    name: "Circuit de Spa-Francorchamps",  code: 'be-1925' },
+			hungary:      { lat: 47.5789,  lng: 19.2486,   name: "Hungaroring",                   code: 'hu-1986' },
+			netherlands:  { lat: 52.3888,  lng: 4.5409,    name: "Circuit Zandvoort",             code: 'nl-1948' },
+			italy_monza:  { lat: 45.6156,  lng: 9.2811,    name: "Autodromo Nazionale Monza",     code: 'it-1922' },
+			azerbaijan:   { lat: 40.3725,  lng: 49.8533,   name: "Baku City Circuit",             code: 'az-2016' },
+			singapore:    { lat: 1.2914,   lng: 103.8639,  name: "Marina Bay Street Circuit",     code: 'sg-2008' },
+			usa_austin:   { lat: 30.1328,  lng: -97.6411,  name: "Circuit of the Americas",       code: 'us-2012' },
+			mexico:       { lat: 19.4042,  lng: -99.0907,  name: "Autodromo Hermanos Rodriguez",  code: 'mx-1962' },
+			brazil:       { lat: -23.7036, lng: -46.6997,  name: "Interlagos Circuit",            code: 'br-1940' },
+			usa_vegas:    { lat: 36.1147,  lng: -115.1728, name: "Las Vegas Strip Circuit",       code: 'us-2023' },
+			qatar:        { lat: 25.4900,  lng: 51.4542,   name: "Lusail International Circuit",  code: 'qa-2004' },
+			abudhabi:     { lat: 24.4672,  lng: 54.6031,   name: "Yas Marina Circuit",            code: 'ae-2009' }
+		};
+
+		let map = null;
+        	let marker = null;
+		let trackLine = null;
+
+		async function loadTrack(track) {
+			const mapContainer = document.getElementById('map-container');
+			const placeholder = document.getElementById('map-placeholder');
+
+			placeholder.style.display = 'none';
+			mapContainer.style.display = 'block';
+
+			if (!map) {
+				map = L.map('map-container').setView([track.lat, track.lng], 15);
+				L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+					attribution: '© OpenStreetMap contributors'
+				}).addTo(map);
+			} else {
+				map.setView([track.lat, track.lng], 15);
+			}
+
+			if (marker) marker.remove();
+			marker = L.marker([track.lat, track.lng])
+				.addTo(map)
+				.bindPopup(`<strong>${track.name}</strong>`)
+				.openPopup();
+
+			if (trackLine) {
+				trackLine.remove();
+				trackLine = null;
+			}
+
+			try {
+				const url = `https://raw.githubusercontent.com/bacinger/f1-circuits/master/circuits/${track.code}.geojson`;
+				const response = await fetch(url);
+				const geojson = await response.json();
+
+				trackLine = L.geoJSON(geojson, {
+					style: {
+						color: '#e10600',
+						weight: 5,
+						opacity: 0.9
+					}
+				}).addTo(map);
+
+				map.fitBounds(trackLine.getBounds(), { padding: [40, 40] });
+			} catch (err) {
+				console.error('Failed to load track outline:', err);
+			}
+		}
+
+		trackSelect.addEventListener('change', (e) => {
 			const raceIndex = e.target.selectedIndex;
-			let activeRoster = {...startRoster};
+                	let activeRoster = {...startRoster};
 
 			if (raceIndex >= 3) {
-				activeRoster["Red Bull Racing"] = ["Verstappen", "Tsunoda"];
-				activeRoster["Racing Bulls"] = ["Lawson", "Hadjar"];
-			}
-
+                        	activeRoster["Red Bull Racing"] = ["Verstappen", "Tsunoda"];
+                        	activeRoster["Racing Bulls"] = ["Lawson", "Hadjar"];
+                	}
 			if (raceIndex >= 7) {
-				activeRoster["Alpine"] = ["Gasly", "Colapinto"]
-			}
+                        	activeRoster["Alpine"] = ["Gasly", "Colapinto"];
+                	}
 
 			document.querySelectorAll('.team-block').forEach(block => {
-				const teamName = block.querySelector('.team-name').innerText.trim();
-				const drivers = activeRoster[teamName];
+                        	const teamName = block.querySelector('.team-name').innerText.trim();
+                        	const drivers = activeRoster[teamName];
+                        	if (drivers) {
+                                	const buttons = block.querySelectorAll('button');
+                                	if (buttons.length >= 2) {
+                                        	buttons[0].textContent = drivers[0];
+                                        	buttons[1].textContent = drivers[1];
+                                	}
+                        	}
+                	});
 
-				if (drivers) {
-					const buttons = block.querySelectorAll('button');
-					if (buttons.length >= 2){
-						buttons[0].textContent = drivers[0];
-						buttons[1].textContent = drivers[1];
-					}
-				}
-
-			}
-		)});
-
-	
-		trackSelect.addEventListener('change', (e) => {
 			const selectedValue = e.target.value;
+                	const mapContainer = document.getElementById('map-container');
+                	const placeholder = document.getElementById('map-placeholder');
 
-    			if (selectedValue === 'canada') {
-    				mapDisplay.style.height = 'auto';
-    				mapDisplay.style.display = 'block';
-    				mapDisplay.style.background = 'transparent';
-    
-    				mapDisplay.innerHTML = `
-      					<div style="text-align: center; padding: 10px;">
-        					<img src="track_images/CircuitGillesVilleneuve.png" 
-             					alt="Circuit Gilles Villeneuve" 
-             					style="max-width: 100%; height: auto; border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-      					</div>`;
-			} else {
-    				// Revert to placeholder style if any other track is selected
-				mapDisplay.style.height = '200px';
-    				mapDisplay.style.display = 'flex';
-    				mapDisplay.style.background = '#18181c';
-				mapDisplay.style.color = '#333340';
-				mapDisplay.innerHTML = `Select a track to view telemetry map`;
-    			}
-    		});
+			if (selectedValue === 'default') {
+                        	mapContainer.style.display = 'none';
+                        	placeholder.style.display = 'flex';
+                        	return;
+                	}
+
+			const track = trackData[selectedValue];
+        		if (!track) return;
+
+        		loadTrack(track);
+		});
 	</script>
 </body>
 </html>
