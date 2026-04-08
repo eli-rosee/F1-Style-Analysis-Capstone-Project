@@ -1,10 +1,13 @@
 # F1-Style-Analysis-Capstone-Project
 
-## Installing dependencies
+## Overview
+This project develops a visual dashboard that uses clustering algorithms to analyze **Formula 1 telemetry data**. Our goal is to categorize "driving styles" and identify optimal racing profiles, making complex analytics accessible to both professionals and fans.
+
+## Installing Dependencies
 ###
     pip install -r requirements.txt
 
-## Current functionalities
+## Current Functionalities
 - Data Scraping
 - Data Preprocessing
   - Normalization
