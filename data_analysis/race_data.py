@@ -2,6 +2,7 @@ import json
 import numpy as np
 import pandas as pd
 from query_db import TelemetryDatabase
+from export_library import ExportLibrary
 from sklearn.decomposition import PCA
 
 # Have to run build_metadata_cache.py
@@ -49,6 +50,9 @@ class RaceData:
 
         # Initializes postgresdb connection (see query_db.py)
         self.db = TelemetryDatabase()
+
+        self.exporter = ExportLibrary(race_name)
+
         self.max_dict = {}
         self.min_dict = {}
 
@@ -75,6 +79,14 @@ class RaceData:
 
         # Loads the data from the database, stores it in the df_dict, in order of lap
         self._load()
+
+        self.exporter.record_load(self.driver_laps)
+
+        self._get_min_max()
+        self._reindex()
+        self._normalize()
+        self._average_speed_check()
+        self.pca()
 
         # Gets the GLOBAL min max (depreciated, we now use local min maxes through _get_min_max)
         self._get_min_max()
@@ -159,6 +171,7 @@ class RaceData:
 
                 if df.isna().sum().sum() > 0:
                     print(f"  Dropping {driver} lap {lap_num} — NaN values detected")
+                    self.exporter.record_nan_drop(driver, lap_num)
                     continue
 
                 df['gear'] = df['gear'].fillna(0).round().astype(int)
@@ -206,8 +219,14 @@ class RaceData:
             for lap_num, df in enumerate(self.interp_dict[driver], start=1):
                 avg_speed = np.mean(df['speed'])
 
-                if lap_num == 1 or avg_speed < lower_bound:
+                if lap_num == 1:
                     print(f"  Dropping {driver} lap {lap_num} — outlier")
+                    self.exporter.record_outlier_drop(driver, lap_num, reason="first_lap")
+
+                elif avg_speed < lower_bound:
+                    print(f"  Dropping {driver} lap {lap_num} — outlier")
+                    self.exporter.record_outlier_drop(driver, lap_num, reason="iqr_outlier")
+
                 else:
                     filtered_laps.append(df)
 
