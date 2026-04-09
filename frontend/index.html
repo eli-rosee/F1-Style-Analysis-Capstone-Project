@@ -231,6 +231,122 @@
   			outline: none;
   			border-color: #e10600;
     		}
+
+	/* -------- Track Summary Panel ----------- */
+
+		.track-summary {
+			display: none;
+			margin-top: 10px;
+			background: #18181c;
+			border: 1px solid #2a2a2e;
+			border-radius: 8px;
+			padding: 14px 20px;
+			display: none;
+			gap: 0;
+		}
+
+		.track-summary-title {
+			font-size: 10px;
+			font-weight: 700;
+			letter-spacing: 0.12em;
+			text-transform: uppercase;
+			color: #555560;
+			margin-bottom: 12px;
+		}
+
+		.track-summary-title::before {
+			content: '';
+			display: inline-block;
+			width: 24px;
+			height: 2px;
+			background: #e10600;
+			vertical-align: middle;
+			margin-right: 8px;
+			border-radius: 1px;
+		}
+
+		.summary-stats {
+			display: flex;
+			gap: 20px;
+			align-items: center;
+		}
+
+		.stat-item {
+			display: flex;
+			flex-direction: column;
+			gap: 4px;
+		}
+
+		.stat-label {
+			font-size: 9px;
+			font-weight: 700;
+			letter-spacing: 0.1em;
+			text-transform: uppercase;
+			color: #555560;
+		}
+
+		.stat-value {
+			font-size: 22px;
+			font-weight: 700;
+			color: #ffffff;
+		}
+
+		.stat-value.dropped {
+			color: #e10600;
+			cursor: help;
+			text-decoration: underline dotted #e10600;
+			position: relative;
+		}
+
+		.stat-divider {
+			width: 1px;
+			height: 40px;
+			background: #2a2a2e;
+		}
+
+		.drop-tooltip {
+			display: none;
+			position: absolute;
+			bottom: calc(100% + 8px);
+			left: 50%;
+			transform: translateX(-50%);
+			background: #0d0d0f;
+			border: 1px solid #2a2a2e;
+			border-radius: 6px;
+			padding: 10px 14px;
+			white-space: nowrap;
+			z-index: 1000;
+		}
+
+		.drop-tooltip::after {
+			content: '';
+			position: absolute;
+			top: 100%;
+			left: 50%;
+			transform: translateX(-50%);
+			border: 6px solid transparent;
+			border-top-color: #2a2a2e;
+		}
+
+		.stat-value.dropped:hover .drop-tooltip {
+			display: block;
+		}
+
+		.drop-tooltip-row {
+			display: flex;
+			justify-content: space-between;
+			gap: 20px;
+			font-size: 11px;
+			color: #ccccdd;
+			padding: 2px 0;
+		}
+
+		.drop-tooltip-row span:first-child {
+			color: #555560;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			font-size: 10px;
+		}
   	</style>
 </head>
 <body>
@@ -299,6 +415,8 @@
 		<div class="panel" id="middle-panel"> <!-- Driver stats will be injected here --> </div>
 
 		<!------- Bottom section -------->
+
+		<!------- Track Dropdown Menu -------->
 		<div class="panel">
 			<div class="map-controls">
 				<label for="track-select">Map Visualization:</label>
@@ -309,7 +427,7 @@
 					<option value="china">Shanghai, China - Shanghai International Circuit</option>
 					<option value="japan">Suzuka, Japan - Suzuka Circuit</option>
 					<option value="bahrain">Sakhir, Bahrain - Bahrain International Circuit</option>
-					<option value="saudi">Jeddah, Saudi Arabia - Jeddah Corniche Circuit</option>
+					<option value="saudi_arabia">Jeddah, Saudi Arabia - Jeddah Corniche Circuit</option>
 					<option value="usa_miami">Miami, USA - Miami International Autodrome</option>
 					<option value="italy_imola">Imola, Italy - Autodromo Enzo e Dino Ferrari</option>
 					<option value="monaco">Monaco, Monaco - Circuit de Monaco</option>
@@ -328,14 +446,52 @@
 					<option value="brazil">Sao Paulo, Brazil - Interlagos Circuit</option>
 					<option value="usa_vegas">Las Vegas, USA - Las Vegas Strip Circuit</option>
 					<option value="qatar">Lusail, Qatar - Lusail International Circuit</option>
-					<option value="abudhabi">Abu Dhabi, UAE - Yas Marina Circuit</option>
+					<option value="abu_dhabi">Abu Dhabi, UAE - Yas Marina Circuit</option>
 				</select>
 			</div>
+
+			<!------- Track Visual -------->
 			<div id="map-display" style="margin-top: 15px; height: 450px; border-radius: 8px; border: 1px solid #2a2a2e; overflow: hidden;">
 				<div id="map-container" style="width: 100%; height: 100%;"></div>
         			<div id="map-placeholder" style="width: 100%; height: 100%; background: #18181c; display: flex; align-items: center; justify-content: center; color: #333340; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
                 			Select a track to view map
         			</div>
+			</div>
+			
+			<!------- Summary of Ingested Data for Track -------->
+			<div id="track-summary" class="track-summary">
+				<div class="track-summary-title">Lap Ingestion Summary</div>
+				<div class="summary-stats">
+					<div class="stat-item">
+						<div class="stat-label">Total Laps Ingested</div>
+						<div class="stat-value" id="summary-total">—</div>
+					</div>
+					<div class="stat-divider"></div>
+					<div class="stat-item">
+						<div class="stat-label">Usable Laps</div>
+						<div class="stat-value" id="summary-usable">—</div>
+					</div>
+					<div class="stat-divider"></div>
+					<div class="stat-item">
+						<div class="stat-label">Dropped Laps</div>
+						<div class="stat-value dropped" id="summary-dropped">—
+							<div class="drop-tooltip" id="drop-tooltip">
+								<div class="drop-tooltip-row">
+									<span>First Lap</span>
+									<span id="tip-first-lap">—</span>
+								</div>
+								<div class="drop-tooltip-row">
+									<span>IQR Outlier</span>
+									<span id="tip-iqr">—</span>
+								</div>
+								<div class="drop-tooltip-row">
+									<span>NaN Detection</span>
+									<span id="tip-nan">—</span>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -608,6 +764,62 @@
 			}
 		}
 
+		// Function to get the data from our Track_Summary.json files and display it on the webpage
+		async function loadTrackSummary(selectedValue) {
+			const summaryPanel = document.getElementById('track-summary');
+			const totalEl = document.getElementById('summary-total');
+			const usableEl = document.getElementById('summary-usable');
+			const droppedEl = document.getElementById('summary-dropped');
+			const tipFirstLap = document.getElementById('tip-first-lap');
+			const tipIqr = document.getElementById('tip-iqr');
+			const tipNan = document.getElementById('tip-nan');
+
+			try {
+				const response = await fetch(`/clustering_results/${selectedValue}/Track_Summary.json`);
+				const data = await response.json();
+
+				totalEl.textContent = data.total_laps_ingested;
+				usableEl.textContent = data.usable_laps;
+				droppedEl.firstChild.textContent = data.dropped_laps;
+				tipFirstLap.textContent = data.drop_reasons.first_lap;
+				tipIqr.textContent = data.drop_reasons.iqr_outlier;
+				tipNan.textContent = data.drop_reasons.nan_detection;
+
+				summaryPanel.style.display = 'block';
+			} catch (err) {
+				console.error('Failed to load track summary:', err);
+				summaryPanel.style.display = 'none';
+			}
+		}
+
+		// Event Listeners to handle when the dropped laps data is clicked or hovered, specifically so it can be seen on mobile devices
+		const droppedEl = document.getElementById('summary-dropped');
+		const dropTooltip = document.getElementById('drop-tooltip');
+		let tooltipLocked = false;
+
+		droppedEl.addEventListener('mouseenter', () => {
+			dropTooltip.style.display = 'block';
+		});
+
+		droppedEl.addEventListener('mouseleave', () => {
+			if (!tooltipLocked) {
+				dropTooltip.style.display = 'none';
+			}
+		});
+
+		droppedEl.addEventListener('click', (e) => {
+			e.stopPropagation();
+			tooltipLocked = !tooltipLocked;
+			dropTooltip.style.display = 'block';
+		});
+
+		document.addEventListener('click', () => {
+			tooltipLocked = false;
+			dropTooltip.style.display = 'none';
+		});
+
+
+		// Event Listener for when a track is selected, in order to update the drivers to match that race
 		trackSelect.addEventListener('change', (e) => {
 			const raceIndex = e.target.selectedIndex;
                 	let activeRoster = {...startRoster};
@@ -643,13 +855,15 @@
 			if (selectedValue === 'default') {
                         	mapContainer.style.display = 'none';
                         	placeholder.style.display = 'flex';
+				document.getElementById('track-summary').style.display = 'none';
                         	return;
                 	}
 
 			const track = trackData[selectedValue];
         		if (!track) return;
 
-        		loadTrack(track);
+			loadTrack(track);
+			loadTrackSummary(selectedValue);
 		});
 	</script>
 </body>
