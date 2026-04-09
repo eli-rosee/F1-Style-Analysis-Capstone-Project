@@ -7,6 +7,7 @@ from sklearn.metrics import silhouette_score
 from sklearn.metrics import davies_bouldin_score
 from sklearn.metrics import calinski_harabasz_score
 import json
+import os
 
 # ── Toggle this to switch between raw telemetry and PCA-reduced data ──
 #PCA should be set to false for single variable clustering
@@ -277,24 +278,51 @@ def export_driver_distribution_json(all_driver_distributions, filename="Driver_D
     print(f"Saved driver distributions to {filename}")
 
 
-
 def main():
 
     # Load race metadata from cache
     with open('cache/race_metadata_cache.json', 'r') as f:
         race_metadata = json.load(f)
-    
+
     available_races = list(race_metadata['races'].keys())
-    
+
+    track_folder_map = {
+        "Australian_Grand_Prix": "australia",
+        "Chinese_Grand_Prix": "china",
+        "Japanese_Grand_Prix": "japan",
+        "Bahrain_Grand_Prix": "bahrain",
+        "Saudi_Arabian_Grand_Prix": "saudi",
+        "Miami_Grand_Prix": "usa_miami",
+        "Emilia_Romagna_Grand_Prix": "italy_imola",
+        "Monaco_Grand_Prix": "monaco",
+        "Spanish_Grand_Prix": "spain",
+        "Canadian_Grand_Prix": "canada",
+        "Austrian_Grand_Prix": "austria",
+        "British_Grand_Prix": "uk",
+        "Belgian_Grand_Prix": "belgium",
+        "Hungarian_Grand_Prix": "hungary",
+        "Dutch_Grand_Prix": "netherlands",
+        "Italian_Grand_Prix": "italy_monza",
+        "Azerbaijan_Grand_Prix": "azerbaijan",
+        "Singapore_Grand_Prix": "singapore",
+        "United_States_Grand_Prix": "usa_austin",
+        "Mexico_City_Grand_Prix": "mexico",
+        "São_Paulo_Grand_Prix": "brazil",
+        "Sao_Paulo_Grand_Prix": "brazil",
+        "Las_Vegas_Grand_Prix": "usa_vegas",
+        "Qatar_Grand_Prix": "qatar",
+        "Abu_Dhabi_Grand_Prix": "abu_dhabi"
+    }
+
     print("\nF1 LAP CLUSTERING ANALYSIS")
-    
+
     # Ask user if they want multivariate clustering
     print("\nClustering Mode:")
     print("1. Multivariate (cluster on multiple metrics)")
     print("2. Single Variable (cluster on one metric)")
-    
+
     mode_choice = input("\nSelect mode (1 or 2): ").strip()
-    
+
     if mode_choice == "1":
         # Multivariate clustering
         use_pca_mode = True
@@ -306,10 +334,10 @@ def main():
         use_pca_mode = False
         print("\nAvailable metrics for single-variable clustering:")
         available_metrics = ['rpm', 'gear', 'throttle', 'brake', 'speed', 'acc_x', 'acc_y', 'acc_z']
-        
+
         for i, metric in enumerate(available_metrics, 1):
             print(f"  {i}. {metric}")
-        
+
         metric_choice = input(f"\nSelect metric (1-{len(available_metrics)}): ").strip()
 
         try:
@@ -326,16 +354,16 @@ def main():
         except ValueError:
             print("Invalid input. Using default: rpm")
             clusterVariables = ["rpm"]
-    
+
     # Ask user about track selection
     print("Track Selection:")
     print("1. All available tracks")
     print("2. Specific track")
-    
+
     track_choice = input("\nSelect option (1 or 2): ").strip()
-    
+
     races_to_analyze = []
-    
+
     if track_choice == "1":
         # All tracks
         races_to_analyze = available_races
@@ -346,7 +374,7 @@ def main():
         print("\nAvailable tracks:")
         for i, race in enumerate(available_races, 1):
             print(f"  {i}. {race}")
-        
+
         race_selection = input(f"\nSelect track (1-{len(available_races)}): ").strip()
 
         try:
@@ -359,11 +387,11 @@ def main():
             else:
                 print("Invalid selection. Using default: Canadian_Grand_Prix")
                 races_to_analyze = ['Canadian_Grand_Prix']
-                
+
         except ValueError:
             print("Invalid input. Using default: Canadian_Grand_Prix")
             races_to_analyze = ['Canadian_Grand_Prix']
-    
+
     # Ask about number of clusters
     cluster_num_input = input("\nNumber of clusters (default 5): ").strip()
     try:
@@ -371,30 +399,30 @@ def main():
     except ValueError:
         cluster_num = 5
         print("Invalid input. Using default: 5 clusters")
-    
+
     print("\nSTARTING ANALYSIS\n")
 
-    all_driver_distributions = []
-    
     # Process each selected race
     for race_name in races_to_analyze:
 
+        all_driver_distributions = []
+
         print(f"Processing: {race_name}\n")
-        
+
         # Create RaceData object with the defined columns
         race = RaceData(race_name, clusterVariables)
-        
+
         drivers = race.drivers
         data_dict = {}
-        
+
         if use_pca_mode:
             data_dict = race.reduced_dict
         else:
             data_dict = race.interp_dict
-        
+
         # Create kmeans cluster
         labels, sil, dbi, cah, lap_refs = k_means_cluster(data_dict, drivers, cluster_num=cluster_num)
-        
+
         attach_labels(race.interp_dict, lap_refs, labels)
 
         for driver in drivers:
@@ -442,31 +470,35 @@ def main():
 
         # Calculate percentage of laps a driver falls into each cluster
         driver_cluster_distribution(race.interp_dict, drivers)
-        
+
         # Calculate the mean values of each cluster
         cluster_mean_telemetry(race.interp_dict, drivers, race.norm_columns)
-        
+
         # Print cluster performance metrics
         print(f"\nCluster Performance Metrics:")
         print(f"Silhouette: {sil:.4f}") #Range [-1, 1]. Higher score indicates better clustering
         print(f"Davies Bouldin: {dbi:.4f}") #Lower score indicates better clustering
         print(f"Calinski Harabasz: {cah:.4f}") #Higher score indicates better clustering
-        
-        # Generate output filenames with race name
-        race_name_clean = race_name.replace(" ", "_")
-        csv_filename = f"clustering_results_{race_name_clean}.csv"
-        summary_filename = f"cluster_summary_{race_name_clean}.csv"
-        
+
+        track_folder = track_folder_map.get(race_name, race_name.lower())
+        output_dir = os.path.join("results", track_folder)
+        os.makedirs(output_dir, exist_ok=True)
+
+        csv_filename = os.path.join(output_dir, "clustering_results.csv")
+        summary_filename = os.path.join(output_dir, "cluster_summary.csv")
+        json_filename = os.path.join(output_dir, "driver_distribution.json")
+
         # Save cluster results to a .csv
         export_clusters_to_csv(race, clusterVariables, filename=csv_filename)
-        
+
         # Save summary of cluster results to a .csv
         export_cluster_summary(race, clusterVariables, filename=summary_filename)
+        export_driver_distribution_json(all_driver_distributions, filename=json_filename)
         # Export 1 – Track Summar
         race.exporter.export_track_summary()
 
-    export_driver_distribution_json(all_driver_distributions)    
     print("ANALYSIS COMPLETE")
+
 
 if __name__ == '__main__':
     main()
