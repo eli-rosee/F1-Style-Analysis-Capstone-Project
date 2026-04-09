@@ -17,22 +17,28 @@ USE_PCA = True
 def _build_matrix(data_dict, drivers):
     all_laps = []
     lap_refs = []   # ← NEW: track (driver, lap_index)
-
+    expected_shape = None
+ 
     for driver in drivers:
         for lap_idx, lap in enumerate(data_dict[driver]):
-
+ 
             if isinstance(lap, np.ndarray):
                 flat = lap.flatten()
             else:
                 flat = lap.values.flatten()
-
+ 
             if flat.size == 0:
                 continue
-
-            all_laps.append(flat)
-            lap_refs.append((driver, lap_idx))  # ← track it
-
-
+ 
+            if expected_shape is None:
+                expected_shape = flat.shape
+ 
+            if flat.shape == expected_shape:
+                all_laps.append(flat)
+                lap_refs.append((driver, lap_idx))  # ← track it
+            else:
+                print(f"Skipping lap with inconsistent shape: {flat.shape}")
+ 
     return np.vstack(all_laps), lap_refs
 
 def k_means_cluster(data_dict, drivers, cluster_num):

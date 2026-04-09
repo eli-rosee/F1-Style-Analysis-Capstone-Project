@@ -141,6 +141,11 @@ class RaceData:
                 max_dict[col] = max(max_dict.get(col, -np.inf), np.nanpercentile(df[col], 98))
                 min_dict[col] = min(min_dict.get(col, np.inf), np.nanpercentile(df[col], 2))
 
+        for col in self.norm_columns:
+                    if col not in max_dict:
+                        max_dict[col] = 1.0
+                        min_dict[col] = 0.0
+
         return min_dict, max_dict
 
     def _reindex_df_operations(self, df):
@@ -176,6 +181,9 @@ class RaceData:
         print("Normalizing...")
         for driver in self.drivers:
             print(f"  Normalizing {driver}...")
+            if not self.interp_dict[driver]:
+                print(f"  Skipping {driver} — no usable laps")
+                continue
             prev_lap_increment = 0
             min_dict, max_dict = {}, {}
             for lap_num, df in enumerate(self.interp_dict[driver], start=1):
