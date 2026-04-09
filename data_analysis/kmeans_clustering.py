@@ -267,6 +267,16 @@ def export_cluster_summary(race, clusterVariables, filename="cluster_summary.csv
     else:
         print("No data available to summarize.")
 
+#export driver distribution json
+def export_driver_distribution_json(all_driver_distributions, filename="Driver_Distribution.json"):
+    print(f"Saving driver distributions to {filename}...")
+
+    with open(filename, "w") as f:
+        json.dump(all_driver_distributions, f, indent=2)
+
+    print(f"Saved driver distributions to {filename}")
+
+
 
 def main():
 
@@ -363,6 +373,8 @@ def main():
         print("Invalid input. Using default: 5 clusters")
     
     print("\nSTARTING ANALYSIS\n")
+
+    all_driver_distributions = []
     
     # Process each selected race
     for race_name in races_to_analyze:
@@ -384,7 +396,50 @@ def main():
         labels, sil, dbi, cah, lap_refs = k_means_cluster(data_dict, drivers, cluster_num=cluster_num)
         
         attach_labels(race.interp_dict, lap_refs, labels)
-        
+
+        for driver in drivers:
+            cluster_counts = {}
+
+            for lap_df in race.interp_dict[driver]:
+                if 'cluster_label' not in lap_df.columns:
+                    continue
+
+                label = int(lap_df['cluster_label'].iloc[0])
+                cluster_counts[label] = cluster_counts.get(label, 0) + 1
+
+            usable_laps = sum(cluster_counts.values())
+
+            cluster_distribution = []
+            for cluster_id in range(cluster_num):
+                lap_count = cluster_counts.get(cluster_id, 0)
+                lap_percentage = round(lap_count / usable_laps, 3) if usable_laps > 0 else 0.0
+
+                cluster_distribution.append({
+                    "cluster_id": cluster_id,
+                    "lap_count": lap_count,
+                    "lap_percentage": lap_percentage
+                })
+
+            sorted_clusters = sorted(
+                cluster_distribution,
+                key=lambda x: x["lap_count"],
+                reverse=True
+            )
+
+            primary_style_cluster = sorted_clusters[0]["cluster_id"] if len(sorted_clusters) > 0 else None
+            secondary_style_cluster = sorted_clusters[1]["cluster_id"] if len(sorted_clusters) > 1 else None
+
+            driver_summary = {
+                "race": race.race_name,
+                "driver": driver,
+                "usable_laps": usable_laps,
+                "cluster_distribution": cluster_distribution,
+                "primary_style_cluster": primary_style_cluster,
+                "secondary_style_cluster": secondary_style_cluster
+            }
+
+            all_driver_distributions.append(driver_summary)
+
         # Calculate percentage of laps a driver falls into each cluster
         driver_cluster_distribution(race.interp_dict, drivers)
         
@@ -407,8 +462,10 @@ def main():
         
         # Save summary of cluster results to a .csv
         export_cluster_summary(race, clusterVariables, filename=summary_filename)
-        # ── NEW: Export 1 – Track Summary ──
+        # Export 1 – Track Summar
         race.exporter.export_track_summary()
+
+    export_driver_distribution_json(all_driver_distributions)    
     print("ANALYSIS COMPLETE")
 
 if __name__ == '__main__':
