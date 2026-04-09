@@ -767,23 +767,23 @@
 		// Function to get the data from our Track_Summary.json files and display it on the webpage
 		async function loadTrackSummary(selectedValue) {
 			const summaryPanel = document.getElementById('track-summary');
-			const totalEl = document.getElementById('summary-total');
-			const usableEl = document.getElementById('summary-usable');
-			const droppedEl = document.getElementById('summary-dropped');
-			const tipFirstLap = document.getElementById('tip-first-lap');
-			const tipIqr = document.getElementById('tip-iqr');
-			const tipNan = document.getElementById('tip-nan');
+			const totalLaps = document.getElementById('summary-total');
+			const usableLaps = document.getElementById('summary-usable');
+			const droppedLaps = document.getElementById('summary-dropped');
+			const dropFirstLap = document.getElementById('tip-first-lap');
+			const dropIqr = document.getElementById('tip-iqr');
+			const dropNan = document.getElementById('tip-nan');
 
 			try {
 				const response = await fetch(`/clustering_results/${selectedValue}/Track_Summary.json`);
 				const data = await response.json();
 
-				totalEl.textContent = data.total_laps_ingested;
-				usableEl.textContent = data.usable_laps;
-				droppedEl.firstChild.textContent = data.dropped_laps;
-				tipFirstLap.textContent = data.drop_reasons.first_lap;
-				tipIqr.textContent = data.drop_reasons.iqr_outlier;
-				tipNan.textContent = data.drop_reasons.nan_detection;
+				totalLaps.textContent = data.total_laps_ingested;
+				usableLaps.textContent = data.usable_laps;
+				droppedLaps.firstChild.textContent = data.dropped_laps;
+				dropFirstLap.textContent = data.drop_reasons.first_lap;
+				dropIqr.textContent = data.drop_reasons.iqr_outlier;
+				dropNan.textContent = data.drop_reasons.nan_detection;
 
 				summaryPanel.style.display = 'block';
 			} catch (err) {
@@ -793,21 +793,21 @@
 		}
 
 		// Event Listeners to handle when the dropped laps data is clicked or hovered, specifically so it can be seen on mobile devices
-		const droppedEl = document.getElementById('summary-dropped');
+		const droppedLaps = document.getElementById('summary-dropped');
 		const dropTooltip = document.getElementById('drop-tooltip');
 		let tooltipLocked = false;
 
-		droppedEl.addEventListener('mouseenter', () => {
+		droppedLaps.addEventListener('mouseenter', () => {
 			dropTooltip.style.display = 'block';
 		});
 
-		droppedEl.addEventListener('mouseleave', () => {
+		droppedLaps.addEventListener('mouseleave', () => {
 			if (!tooltipLocked) {
 				dropTooltip.style.display = 'none';
 			}
 		});
 
-		droppedEl.addEventListener('click', (e) => {
+		droppedLaps.addEventListener('click', (e) => {
 			e.stopPropagation();
 			tooltipLocked = !tooltipLocked;
 			dropTooltip.style.display = 'block';
