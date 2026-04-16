@@ -188,6 +188,72 @@
 			display: block;
 		}
 
+	/* -------- Cluster Overview Panel ----------- */
+
+		.cluster-overview {
+			display: none;
+			margin-top: 10px;
+			background: #18181c;
+			border: 1px solid #2a2a2e;
+			border-radius: 8px;
+			padding: 14px 20px;
+		}
+
+		.cluster-overview-header {
+			display: flex;
+			align-items: center;
+			gap: 15px;
+			margin-bottom: 12px;
+		}
+
+		.cluster-overview-title {
+			font-size: 10px;
+			font-weight: 700;
+			letter-spacing: 0.12em;
+			text-transform: uppercase;
+			color: #555560;
+		}
+
+		.cluster-overview-title::before {
+			content: '';
+			display: inline-block;
+			width: 24px;
+			height: 2px;
+			background: #e10600;
+			vertical-align: middle;
+			margin-right: 8px;
+			border-radius: 1px;
+		}
+
+		.cluster-dropdown {
+			padding: 5px 10px;
+			border-radius: 5px;
+			border: 1px solid #2a2a2e;
+			font-size: 0.85rem;
+			background-color: #0d0d0f;
+			color: #ccccdd;
+			cursor: pointer;
+		}
+
+		.cluster-dropdown:focus {
+			outline: none;
+			border-color: #e10600;
+		}
+
+		.cluster-meta {
+			font-size: 10px;
+			color: #555560;
+			letter-spacing: 0.08em;
+			text-transform: uppercase;
+			margin-left: auto;
+		}
+
+		.cluster-chart-wrap {
+			position: relative;
+			width: 100%;
+			height: 260px;
+		}
+
 	/*---------Map Visualization Panel-------------*/
     		.map-controls {
   			display: flex;
@@ -347,7 +413,9 @@
 			letter-spacing: 0.08em;
 			font-size: 10px;
 		}
+
   	</style>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 	<div class="container">
@@ -413,6 +481,24 @@
 		</div>
 		<!------- Middle section -------->
 		<div class="panel" id="middle-panel"> <!-- Driver stats will be injected here --> </div>
+
+
+		<div id="cluster-overview" class="cluster-overview">
+			<div class="cluster-overview-header">
+				<div class="cluster-overview-title">Cluster Overview</div>
+				<select id="cluster-select" class="cluster-dropdown">
+					<option value="0">Cluster 0</option>
+					<option value="1">Cluster 1</option>
+					<option value="2">Cluster 2</option>
+					<option value="3">Cluster 3</option>
+					<option value="4">Cluster 4</option>
+				</select>
+				<div class="cluster-meta" id="cluster-meta">—</div>
+			</div>
+			<div class="cluster-chart-wrap">
+				<canvas id="cluster-deviation-chart" role="img" aria-label="Cluster deviation chart"></canvas>
+			</div>
+		</div>
 
 		<!------- Bottom section -------->
 
@@ -499,6 +585,7 @@
 			<a href="https://github.com/eli-rosee/f1-style-analysis-capstone-project"
 			   target="_blank"
 			   style="color: #555560; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none;">
+				<i class="fa-brands fa-github"></i>
 				View on GitHub
 			</a>
 		</footer>
@@ -874,6 +961,14 @@
 				console.error(`Failed to load driver data for ${driverName}:`, err);
 			}
 		}
+
+
+		// Cluster overview section here
+		//
+		//
+		//
+		//
+		//
 
 
 		// Event Listener for when a track is selected, in order to update the drivers to match that race
