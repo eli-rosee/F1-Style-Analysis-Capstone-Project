@@ -18,22 +18,18 @@
 			min-height: 100%;
 		}
 	/* ----------------- Panels ----------------- */
-		.panel:nth-child(1) { /*Driver Selection*/
+		.top-panel { 
       			border-bottom: 1px solid #2a2a2e;
       			padding: 10px;
-      			box-sizing: border-box;
     		}
 
-    		.panel:nth-child(2) { /*Stat Blocks*/
+    		.middle-panel {
       			border-bottom: 1px solid #2a2a2e;
       			padding: 10px;
-      			box-sizing: border-box;
     		}
 
-    		.panel:nth-child(3) { /*Map Visuals*/
-      			border-bottom: none;
+    		.bottom-panel { 
       			padding: 10px;
-      			box-sizing: border-box;
     		}
 	
 	/* ----------------- Driver Header ----------------- */
@@ -138,29 +134,31 @@
 	
 	/* ----------------- Middle Panel  ----------------- */
     		#middle-panel {
-	    		display: block;
-	    		gap: 10px;
-	    		box-sizing: border-box;
+	    		display: flex;
+			flex-wrap: wrap;
+	    		justify-content: center;
+			gap: 20px;
+			align-items: stretch;
+			width: 100%;
     		}
 
     		.driver-stats {
-	    		width: fit-content;
-			max-width: calc(100% - 20px);
-	    		margin: 10px auto;
+			width: fit-content;
+			min-width: 300px;
+			max-width: 100%;
+			margin: 0;
 	    		border: 1px solid #2a2a2e;
 	    		border-radius: 10px;
 	    		background: #18181c;
 	    		padding: 15px;
-	    		box-sizing: border-box;
 			display: flex;
 			flex-direction: column;
-			align-items: center;
+			align-items: stretch;
 			gap: 10px;
 			overflow: hidden;
     		}
 
     		.driver-stats h2 {
-			flex-basis: 100%;
                 	margin: 0 0 10px 0;
                 	text-align: center;
                 	font-size: 13px;
@@ -177,7 +175,7 @@
 			display: flex;
 			gap: 10px;
 			align-items: center;
-    			flex-wrap: nowrap;     
+    			flex-wrap: wrap;     
     			overflow-x: auto;
 			width: 100%;
 			padding-bottom: 8px;
@@ -302,7 +300,7 @@
 
 		.track-summary {
 			display: none;
-			margin-top: 10px;
+			margin: 10px;
 			background: #18181c;
 			border: 1px solid #2a2a2e;
 			border-radius: 8px;
@@ -421,9 +419,11 @@
 	<div class="container">
 
     		<!-- Top section -->
-    		<div class="panel">
-      			<div class="driver-header">
-        			<h1><span>F1</span> Telemetry Insights Visual Dashboard</h1>
+		
+		<!------- Track Dropdown Menu -------->
+		<div class="top-panel">
+			<div class="driver-header">
+				<h1><span>F1</span> Telemetry Insights Visual Dashboard</h1>
         			<p>Driver Selection</p>
 				<div class="teams-container">
 					<div class="team-block">
@@ -438,8 +438,8 @@
 					</div>
 					<div class="team-block">
 						<div class="team-name">Mercedes</div>
-						<button>Antonelli</button>
 						<button>Russell</button>
+						<button>Antonelli</button>
 					</div>
 					<div class="team-block">
 						<div class="team-name">McLaren</div>
@@ -458,8 +458,8 @@
 					</div>
 					<div class="team-block">
 						<div class="team-name">Williams Racing</div>
-						<button>Albon</button>
 						<button>Sainz</button>
+						<button>Albon</button>
 					</div>
 					<div class="team-block">
 						<div class="team-name">Haas F1 Team</div>
@@ -478,32 +478,8 @@
 					</div>
 				</div>
 			</div>
-		</div>
-		<!------- Middle section -------->
-		<div class="panel" id="middle-panel"> <!-- Driver stats will be injected here --> </div>
 
-
-		<div id="cluster-overview" class="cluster-overview">
-			<div class="cluster-overview-header">
-				<div class="cluster-overview-title">Cluster Overview</div>
-				<select id="cluster-select" class="cluster-dropdown">
-					<option value="0">Cluster 0</option>
-					<option value="1">Cluster 1</option>
-					<option value="2">Cluster 2</option>
-					<option value="3">Cluster 3</option>
-					<option value="4">Cluster 4</option>
-				</select>
-				<div class="cluster-meta" id="cluster-meta">—</div>
-			</div>
-			<div class="cluster-chart-wrap">
-				<canvas id="cluster-deviation-chart" role="img" aria-label="Cluster deviation chart"></canvas>
-			</div>
-		</div>
-
-		<!------- Bottom section -------->
-
-		<!------- Track Dropdown Menu -------->
-		<div class="panel">
+			<!------ Track Dropdown Menu ------>
 			<div class="map-controls">
 				<label for="track-select">Map Visualization:</label>
 				<select id="track-select" class="track-dropdown">
@@ -535,15 +511,11 @@
 					<option value="Abu_Dhabi_Grand_Prix">Abu Dhabi, UAE - Yas Marina Circuit</option>
 				</select>
 			</div>
+		</div>
 
-			<!------- Track Visual -------->
-			<div id="map-display" style="margin-top: 15px; height: 450px; border-radius: 8px; border: 1px solid #2a2a2e; overflow: hidden;">
-				<div id="map-container" style="width: 100%; height: 100%;"></div>
-        			<div id="map-placeholder" style="width: 100%; height: 100%; background: #18181c; display: flex; align-items: center; justify-content: center; color: #333340; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
-                			Select a track to view map
-        			</div>
-			</div>
-			
+		<!------- Middle section -------->
+		<div class="middle-panel">
+
 			<!------- Summary of Ingested Data for Track -------->
 			<div id="track-summary" class="track-summary">
 				<div class="track-summary-title">Lap Ingestion Summary</div>
@@ -579,7 +551,42 @@
 					</div>
 				</div>
 			</div>
+
+			<!-- Cluster Overview -->
+			<div id="cluster-overview" class="cluster-overview">
+				<div class="cluster-overview-header">
+					<div class="cluster-overview-title">Cluster Overview</div>
+					<select id="cluster-select" class="cluster-dropdown">
+						<option value="0">Cluster 0</option>
+						<option value="1">Cluster 1</option>
+						<option value="2">Cluster 2</option>
+						<option value="3">Cluster 3</option>
+						<option value="4">Cluster 4</option>
+					</select>
+					<div class="cluster-meta" id="cluster-meta">—</div>
+				</div>
+				<div class="cluster-chart-wrap">
+					<canvas id="cluster-deviation-chart" role="img" aria-label="Cluster deviation chart"></canvas>
+				</div>
+			</div>
+
+			<!-- Driver Stats -->
+			<div id="middle-panel">
+            			<!-- stats injected here from JS -->
+        		</div>
 		</div>
+		
+		<!------- Bottom section -------->
+		<div class="bottom-panel">
+			<!------- Track Visual -------->
+			<div id="map-display" style="margin-top: 15px; height: 450px; border-radius: 8px; border: 1px solid #2a2a2e; overflow: hidden;">
+				<div id="map-container" style="width: 100%; height: 100%;"></div>
+				<div id="map-placeholder" style="width: 100%; height: 100%; background: #18181c; display: flex; align-items: center; justify-content: center; color: #333340; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">
+					Select a track to view map
+				</div>
+			</div>	
+		</div>
+
 		<!-- Link to our github -->
 		<footer style="border-top: 1px solid #2a2a2e; padding: 14px 10px; text-align: center;">
 			<a href="https://github.com/eli-rosee/f1-style-analysis-capstone-project"
@@ -632,6 +639,15 @@
 			"Hadjar": "HAD", "Bortoleto": "BOR", "Hülkenberg": "HUL"
 		};
 
+		
+		const clusterColors = [
+			'rgba(225, 6, 0, 0.8)',
+			'rgba(0, 92, 230, 0.8)',
+			'rgba(255, 193, 7, 0.8)',
+			'rgba(0, 200, 150, 0.8)',
+			'rgba(180, 0, 230, 0.8)'
+		];
+
 		driverButtons.forEach(button => {
 			button.addEventListener('click', () => {
 				const driverName = button.textContent;
@@ -669,20 +685,12 @@
 					barCanvas.id = `bar-${driverName}`;
 					barWrapper.appendChild(barCanvas);
 
-					const clusterColors = [
-						'rgba(225, 6, 0, 0.8)',
-						'rgba(0, 92, 230, 0.8)',
-						'rgba(255, 193, 7, 0.8)',
-						'rgba(0, 200, 150, 0.8)',
-						'rgba(180, 0, 230, 0.8)'
-					];
-
 					const barChart = new Chart(barCanvas.getContext('2d'), {
 						type: 'bar',
 						data: {
 							labels: ['Lap Distribution'],
 							datasets: [0, 1, 2, 3, 4].map(i => ({
-								label: `Cluster ${i}`,
+								label: `Cluster ${i+1}`,
 								data: [0],
 								backgroundColor: clusterColors[i],
 								borderWidth: 0
@@ -732,7 +740,7 @@
 					charts[driverName] = new Chart(radarCanvas.getContext('2d'), {
 						type: 'radar',
 						data: {
-							labels: ['Cluster 0', 'Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4'],
+							labels: ['Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4', 'Cluster 5'],
 							datasets: [{
 								data: [0, 0, 0, 0, 0],
 								fill: true,
