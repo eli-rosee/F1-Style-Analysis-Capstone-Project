@@ -1,4 +1,3 @@
-from psycopg2 import Error
 import json
 import pandas as pd
 import os

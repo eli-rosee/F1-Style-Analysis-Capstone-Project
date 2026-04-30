@@ -1,6 +1,5 @@
 import psycopg2
 from psycopg2 import Error
-import numpy as np
 
 class telemetry_database():
 
@@ -145,7 +144,6 @@ class telemetry_database():
 
 def main():
     db = telemetry_database()
-    telemetry_columns = ['time', 'distance', 'rel_distance', 'track_coordinate_x', 'track_coordinate_y', 'track_coordinate_z', 'rpm', 'gear', 'throttle', 'brake', 'drs', 'speed', 'acc_x', 'acc_y', 'acc_z']
 
     race_code_map = {"Belgian_Grand_Prix" : "BEL", "Chinese_Grand_Prix" : "CHN", "Hungarian_Grand_Prix" : "HUN", "Japanese_Grand_Prix" : "JPN", "Dutch_Grand_Prix" : "NED",
                     "Bahrain_Grand_Prix" : "BAH", "Italian_Grand_Prix" : "ITA", "Saudi_Arabian_Grand_Prix" : "SAU", "Azerbaijan_Grand_Prix" : "AZE", "Miami_Grand_Prix" : "MIA",
@@ -154,25 +152,10 @@ def main():
                     "Qatar_Grand_Prix" : "QAT", "British_Grand_Prix" : "GBR", "Abu_Dhabi_Grand_Prix" : "ABU", "Austrian_Grand_Prix": "AUT", "Canadian_Grand_Prix": "CAN"
                     }
 
-    # for race in race_code_map.keys():
-    #     print(f"Removing tables for {race}...")
-    #     db.remove_telemetry_table(race_code_map[race], 2025)
-    #     db.remove_metadata_table(race_code_map[race], 2025)
-
     for race in race_code_map.keys():
         print(f"Creating tables for {race}...")
         db.create_telemetry_data_table(race_code_map[race], 2025)
         db.create_race_lap_data(race_code_map[race], 2025)
-    
-
-    ## METHODS FOR INITIAL TABLE CREATION
-    # cluster_methods = ['kmeans', 'dbscan', 'fuzzyc', 'gaussian', 'hierarchical']
-
-    # for method in cluster_methods:
-    #     db.clustering_results(method)
-
-    # db.create_telemetry_data_table()
-    # db.create_race_lap_data()
 
 if __name__ == "__main__":
     main()

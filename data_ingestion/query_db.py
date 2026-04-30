@@ -1,7 +1,6 @@
 from data_ingestion.postgresql_db import telemetry_database
 import numpy as np
 import pandas as pd
-import ast
 
 class query_db():
 
